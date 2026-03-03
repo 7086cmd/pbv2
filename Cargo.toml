@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+
+members = ["client/src-tauri", "schema"]
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+version = "0.1.0"
