@@ -1,6 +1,6 @@
-use std::path::PathBuf;
 use anyhow::Result;
-use sha1::{Sha1, Digest};
+use sha1::{Digest, Sha1};
+use std::path::PathBuf;
 
 use crate::{Engine, LatexBuilder};
 
@@ -11,7 +11,9 @@ pub async fn compile_latex_to_svg<E: Engine + 'static>(latex: &str) -> Result<St
     let (tx, rx) = tokio::sync::oneshot::channel();
 
     // Step 1. Store file into `<tempdir>/folder/timestamp_hash[:6].tex`, and the hash is sha-1
-    let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_millis();
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)?
+        .as_millis();
     let mut hasher = Sha1::new();
     hasher.update(timestamp.to_be_bytes());
     let hashed_hex = hex::encode(hasher.finalize());
@@ -28,22 +30,16 @@ pub async fn compile_latex_to_svg<E: Engine + 'static>(latex: &str) -> Result<St
         let result: Result<PathBuf> = async {
             let result_pdf = E::compile(filepath, false).await?;
             let result_svg = result_pdf.with_extension("svg");
-            let inkscape_output = tokio::process::Command::new("inkscape")
-                .current_dir(&folder)
-                .arg(result_pdf.to_str().unwrap())
-                .arg("--export-type=svg")
-                .arg("--export-plain-svg")
-                .arg("-o")
-                .arg(result_svg.to_str().unwrap())
-                .output().await?;
-            if !inkscape_output.status.success() {
-                return Err(anyhow::anyhow!(
-                    "Inkscape conversion failed: {}",
-                    String::from_utf8_lossy(&inkscape_output.stderr)
-                ));
-            }
+
+            compile_via_inkscape(
+                false,
+                result_pdf.to_str().unwrap(),
+                result_svg.to_str().unwrap(),
+            )
+            .await?;
             Ok(result_svg)
-        }.await;
+        }
+        .await;
         let _ = tx.send(result);
     });
     let result_svg = rx.await??;
@@ -52,6 +48,30 @@ pub async fn compile_latex_to_svg<E: Engine + 'static>(latex: &str) -> Result<St
     println!("SVG content generated:\n{}", svg_content);
     temporary_dir.cleanup()?;
     Ok(svg_content)
+}
+
+pub async fn compile_via_inkscape(
+    svg_to_pdf: bool, /* false for PDF to SVG, true for SVG to PDF */
+    input_path: &str,
+    output_path: &str,
+) -> Result<()> {
+    let mut command = tokio::process::Command::new("inkscape");
+    command.arg(input_path);
+    if svg_to_pdf {
+        command.arg("--export-type=pdf");
+    } else {
+        command.arg("--export-type=svg").arg("--export-plain-svg");
+    }
+    command.arg("-o").arg(output_path);
+
+    let output = command.output().await?;
+    if !output.status.success() {
+        return Err(anyhow::anyhow!(
+            "Inkscape conversion failed: {}",
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    Ok(())
 }
 
 pub async fn compile_svg_to_png(svg_content: &str) -> Result<Vec<u8>> {
@@ -65,7 +85,9 @@ pub async fn compile_svg_to_png(svg_content: &str) -> Result<Vec<u8>> {
     // 2. Render the SVG to the Pixmap (buffer)
     resvg::render(&tree, tiny_skia::Transform::default(), &mut pixmap.as_mut());
 
-    pixmap.encode_png().map_err(|e| anyhow::anyhow!("Failed to encode PNG: {}", e))
+    pixmap
+        .encode_png()
+        .map_err(|e| anyhow::anyhow!("Failed to encode PNG: {}", e))
 }
 
 #[cfg(test)]

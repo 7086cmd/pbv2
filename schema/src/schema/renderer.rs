@@ -8,10 +8,12 @@ pub trait Renderer<T: RenderTarget, E: RenderEnvironment> {
 pub struct Latex;
 pub struct Html;
 pub struct Markdown;
+pub struct Proprietary;
 
 impl RenderTarget for Latex {}
 impl RenderTarget for Html {}
 impl RenderTarget for Markdown {}
+impl RenderTarget for Proprietary {}
 
 pub struct Problem;
 pub struct Solution;
@@ -24,7 +26,7 @@ impl RenderEnvironment for Universal {}
 impl<R, T> Renderer<T, Problem> for R
 where
     R: Renderer<T, Universal>,
-    T: RenderTarget
+    T: RenderTarget,
 {
     fn render(&self) -> anyhow::Result<String> {
         <R as Renderer<T, Universal>>::render(self)
@@ -34,7 +36,7 @@ where
 impl<R, T> Renderer<T, Solution> for R
 where
     R: Renderer<T, Universal>,
-    T: RenderTarget
+    T: RenderTarget,
 {
     fn render(&self) -> anyhow::Result<String> {
         <R as Renderer<T, Universal>>::render(self)

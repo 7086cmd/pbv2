@@ -1,8 +1,8 @@
-use std::{path::PathBuf, process::Command};
 use anyhow::Result;
+use std::{path::PathBuf, process::Command};
 
-mod xelatex;
 mod builtin;
+mod xelatex;
 
 pub use builtin::BuiltinEngine;
 pub use xelatex::XeLaTeX;
@@ -15,7 +15,7 @@ pub trait Engine: Send + Sync {
     async fn compile_once(addr: PathBuf) -> Result<PathBuf>;
 
     /// Compiles the LaTeX document at the given path. If `compile_bib` is true, it will also run BibTeX.
-    /// 
+    ///
     /// The order of compilation is as follows:
     /// 1. Compile the LaTeX document once to generate auxiliary files.
     /// 2. If `compile_bib` is true, run BibTeX on the generated `.aux` file. Then compile the LaTeX document twice more to ensure all references are updated.

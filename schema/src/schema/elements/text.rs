@@ -1,9 +1,9 @@
 //! # Text
-//! 
+//!
 //! The `text` module defines the `Text` struct, which represents a piece of text in a PBV2 document. It contains the actual text content and any associated formatting information, such as font size, color, and style. The `Text` struct is used as a building block for creating more complex elements in the document, such as paragraphs and sections.
-//! 
+//!
 //! The `text` is a hypertext element, and can be exported into various formats, such as LaTeX, HTML, Markdown, and future formats like Word.
-//! 
+//!
 //! We allow the following formatting options for text, with bitflags to indicate which options are applied:
 //! - **Bold**: Indicates that the text should be displayed in boldface. Indicator: `b`.
 //! - **Italic**: Indicates that the text should be displayed in italics. Indicator: `i`.
@@ -16,17 +16,17 @@
 //! - **Formula**: Indicates that the text should be treated as a mathematical formula. Indicator: `f`, denoting "formula." In LaTeX, this would be rendered in math mode, while in HTML it would be rendered using MathJax or a similar library.
 //! - **Red**: Indicates that the text should be displayed in red. Indicator: `r`, denoting "red."
 //! For further formatting options, we can add more indicators as needed. The formatting options can be combined, so a piece of text could be both bold and italic, for example, which would be indicated by `bi`.
-//! 
+//!
 //! The `Text` struct contains two vectors of `u8`. The first vector, `formatting`, contains the indicators for the formatting options that are applied to the text. Its structure is as follows:
 //! - `BITS[0:2]``: Language of the text. The bit 0 indicates the primary language, and bit 1 indicates the secondary language.
 //! - `BITS[2:6]`: The start pointer of the text in the document's text buffer. This indicates where the text begins in the overall document.
 //! That is to say, the end of the previous text element is the start of the next text element, so we can use the start pointer to determine the length of the text by subtracting it from the start pointer of the next text element.
 //! - `BITS[6:8]`: The formatting options applied to the text, represented as bitflags. Each bit corresponds to a specific formatting option, as described above. For example, if the text is bold and italic, the formatting byte would have bits 0 and 1 set (i.e., `0b00000011`).
-//! 
+//!
 //! The second vector, `content`, contains the actual text content as a sequence of bytes. The text is encoded in UTF-8, so each character may be represented by one or more bytes. The length of the text can be determined by looking at the start pointer of the next text element, as mentioned above.
-//! 
+//!
 //! We also provide some attributes for the whole `Text`, e.g., the font size (relative to the default font size), color, and other attributes that can be applied to the entire text element. These attributes are stored in a separate struct called `TextAttributes`, which is associated with the `Text` struct.
-//! 
+//!
 
 #[derive(Debug, Clone)]
 pub struct Text {
@@ -141,8 +141,8 @@ impl TextFormat {
     /// Panics if `bytes.len() < 8`.
     pub fn from_bytes(bytes: &[u8]) -> Self {
         let language = u16::from_le_bytes([bytes[0], bytes[1]]);
-        let start    = u32::from_le_bytes([bytes[2], bytes[3], bytes[4], bytes[5]]);
-        let raw      = u16::from_le_bytes([bytes[6], bytes[7]]);
+        let start = u32::from_le_bytes([bytes[2], bytes[3], bytes[4], bytes[5]]);
+        let raw = u16::from_le_bytes([bytes[6], bytes[7]]);
         TextFormat {
             language,
             start,
@@ -152,10 +152,12 @@ impl TextFormat {
 
     /// Serialise this `TextFormat` into an eight-byte array.
     pub fn to_bytes(self) -> [u8; 8] {
-        let lang  = self.language.to_le_bytes();
+        let lang = self.language.to_le_bytes();
         let start = self.start.to_le_bytes();
         let flags = self.flags.bits().to_le_bytes();
-        [lang[0], lang[1], start[0], start[1], start[2], start[3], flags[0], flags[1]]
+        [
+            lang[0], lang[1], start[0], start[1], start[2], start[3], flags[0], flags[1],
+        ]
     }
 }
 
@@ -212,14 +214,13 @@ impl Text {
         let mut formatting: Vec<u8> = Vec::new();
 
         /// Append one run to the two output buffers.
-        fn emit(
-            content: &mut Vec<u8>,
-            formatting: &mut Vec<u8>,
-            text: &str,
-            flags: TextFlags,
-        ) {
+        fn emit(content: &mut Vec<u8>, formatting: &mut Vec<u8>, text: &str, flags: TextFlags) {
             let start = content.len() as u32;
-            let fmt = TextFormat { language: 0, start, flags };
+            let fmt = TextFormat {
+                language: 0,
+                start,
+                flags,
+            };
             formatting.extend_from_slice(&fmt.to_bytes());
             content.extend_from_slice(text.as_bytes());
         }
@@ -305,9 +306,7 @@ impl Text {
 
             // ── Plain-text run ────────────────────────────────────────────────
             } else {
-                let plain_end = remaining
-                    .find("\\[")
-                    .unwrap_or(remaining.len());
+                let plain_end = remaining.find("\\[").unwrap_or(remaining.len());
                 let plain = &remaining[..plain_end];
                 remaining = &remaining[plain_end..];
 
@@ -335,11 +334,7 @@ impl Text {
     }
 
     /// Return the UTF-8 text slice for run `i` given the full list of formats.
-    fn run_text<'a>(
-        &'a self,
-        formats: &[TextFormat],
-        i: usize,
-    ) -> anyhow::Result<&'a str> {
+    fn run_text<'a>(&'a self, formats: &[TextFormat], i: usize) -> anyhow::Result<&'a str> {
         let start = formats[i].start as usize;
         let end = if i + 1 < formats.len() {
             formats[i + 1].start as usize
@@ -347,7 +342,9 @@ impl Text {
             self.content.len()
         };
         let end = end.min(self.content.len());
-        Ok(std::str::from_utf8(self.content.get(start..end).unwrap_or(&[]))?)
+        Ok(std::str::from_utf8(
+            self.content.get(start..end).unwrap_or(&[]),
+        )?)
     }
 }
 
@@ -362,7 +359,7 @@ impl std::str::FromStr for Text {
 
 use crate::schema::renderer::Universal;
 
-use super::super::renderer::{Html, Latex, Markdown, Renderer};
+use super::super::renderer::{Html, Latex, Markdown, Proprietary, Renderer};
 
 impl Renderer<Latex, Universal> for Text {
     /// Render the `Text` element into a LaTeX fragment and write it to stdout.
@@ -388,14 +385,14 @@ impl Renderer<Latex, Universal> for Text {
         let formats = self.parse_formats();
 
         let size_cmd = match self.attributes.font_size {
-            FontSize::Tiny     => Some("\\tiny"),
-            FontSize::Script   => Some("\\scriptsize"),
+            FontSize::Tiny => Some("\\tiny"),
+            FontSize::Script => Some("\\scriptsize"),
             FontSize::Footnote => Some("\\footnotesize"),
-            FontSize::Small    => Some("\\small"),
-            FontSize::Normal   => None,
-            FontSize::Large    => Some("\\large"),
-            FontSize::XLarge   => Some("\\Large"),
-            FontSize::XXLarge  => Some("\\LARGE"),
+            FontSize::Small => Some("\\small"),
+            FontSize::Normal => None,
+            FontSize::Large => Some("\\large"),
+            FontSize::XLarge => Some("\\Large"),
+            FontSize::XXLarge => Some("\\LARGE"),
         };
 
         let (cr, cg, cb) = self.attributes.color;
@@ -411,7 +408,7 @@ impl Renderer<Latex, Universal> for Text {
         }
 
         for i in 0..formats.len() {
-            let fmt  = formats[i];
+            let fmt = formats[i];
             let text = self.run_text(&formats, i)?;
 
             if fmt.flags.contains(TextFlags::FORMULA) {
@@ -420,30 +417,43 @@ impl Renderer<Latex, Universal> for Text {
                 out.push('$');
             } else {
                 let mut seg = text.to_owned();
-                if fmt.flags.contains(TextFlags::RED)
-                    { seg = format!("\\textcolor{{red}}{{{}}}", seg); }
-                if fmt.flags.contains(TextFlags::MONOSPACE)
-                    { seg = format!("\\texttt{{{}}}", seg); }
-                if fmt.flags.contains(TextFlags::SUBSCRIPT)
-                    { seg = format!("\\textsubscript{{{}}}", seg); }
-                if fmt.flags.contains(TextFlags::SUPERSCRIPT)
-                    { seg = format!("\\textsuperscript{{{}}}", seg); }
-                if fmt.flags.contains(TextFlags::STRIKETHROUGH)
-                    { seg = format!("\\sout{{{}}}", seg); }
-                if fmt.flags.contains(TextFlags::UNDERWAVE)
-                    { seg = format!("\\uwave{{{}}}", seg); }
-                if fmt.flags.contains(TextFlags::UNDERLINE)
-                    { seg = format!("\\underline{{{}}}", seg); }
-                if fmt.flags.contains(TextFlags::ITALIC)
-                    { seg = format!("\\textit{{{}}}", seg); }
-                if fmt.flags.contains(TextFlags::BOLD)
-                    { seg = format!("\\textbf{{{}}}", seg); }
+                if fmt.flags.contains(TextFlags::RED) {
+                    seg = format!("\\textcolor{{red}}{{{}}}", seg);
+                }
+                if fmt.flags.contains(TextFlags::MONOSPACE) {
+                    seg = format!("\\texttt{{{}}}", seg);
+                }
+                if fmt.flags.contains(TextFlags::SUBSCRIPT) {
+                    seg = format!("\\textsubscript{{{}}}", seg);
+                }
+                if fmt.flags.contains(TextFlags::SUPERSCRIPT) {
+                    seg = format!("\\textsuperscript{{{}}}", seg);
+                }
+                if fmt.flags.contains(TextFlags::STRIKETHROUGH) {
+                    seg = format!("\\sout{{{}}}", seg);
+                }
+                if fmt.flags.contains(TextFlags::UNDERWAVE) {
+                    seg = format!("\\uwave{{{}}}", seg);
+                }
+                if fmt.flags.contains(TextFlags::UNDERLINE) {
+                    seg = format!("\\underline{{{}}}", seg);
+                }
+                if fmt.flags.contains(TextFlags::ITALIC) {
+                    seg = format!("\\textit{{{}}}", seg);
+                }
+                if fmt.flags.contains(TextFlags::BOLD) {
+                    seg = format!("\\textbf{{{}}}", seg);
+                }
                 out.push_str(&seg);
             }
         }
 
-        if has_color   { out.push('}'); }
-        if size_cmd.is_some() { out.push('}'); }
+        if has_color {
+            out.push('}');
+        }
+        if size_cmd.is_some() {
+            out.push('}');
+        }
 
         Ok(out)
     }
@@ -484,11 +494,14 @@ impl Renderer<Html, Universal> for Text {
             out.push_str(&format!("<span style=\"font-size:{:.0}%;\">", size_pct));
         }
         if has_color {
-            out.push_str(&format!("<span style=\"color:rgb({},{},{});\">", cr, cg, cb));
+            out.push_str(&format!(
+                "<span style=\"color:rgb({},{},{});\">",
+                cr, cg, cb
+            ));
         }
 
         for i in 0..formats.len() {
-            let fmt  = formats[i];
+            let fmt = formats[i];
             let text = self.run_text(&formats, i)?;
 
             if fmt.flags.contains(TextFlags::FORMULA) {
@@ -497,30 +510,46 @@ impl Renderer<Html, Universal> for Text {
                 out.push('$');
             } else {
                 let mut seg = text.to_owned();
-                if fmt.flags.contains(TextFlags::RED)
-                    { seg = format!("<span style=\"color:red;\">{}</span>", seg); }
-                if fmt.flags.contains(TextFlags::MONOSPACE)
-                    { seg = format!("<code>{}</code>", seg); }
-                if fmt.flags.contains(TextFlags::SUBSCRIPT)
-                    { seg = format!("<sub>{}</sub>", seg); }
-                if fmt.flags.contains(TextFlags::SUPERSCRIPT)
-                    { seg = format!("<sup>{}</sup>", seg); }
-                if fmt.flags.contains(TextFlags::STRIKETHROUGH)
-                    { seg = format!("<del>{}</del>", seg); }
-                if fmt.flags.contains(TextFlags::UNDERWAVE)
-                    { seg = format!("<span style=\"text-decoration:underline wavy;\">{}</span>", seg); }
-                if fmt.flags.contains(TextFlags::UNDERLINE)
-                    { seg = format!("<span style=\"text-decoration:underline;\">{}</span>", seg); }
-                if fmt.flags.contains(TextFlags::ITALIC)
-                    { seg = format!("<em>{}</em>", seg); }
-                if fmt.flags.contains(TextFlags::BOLD)
-                    { seg = format!("<strong>{}</strong>", seg); }
+                if fmt.flags.contains(TextFlags::RED) {
+                    seg = format!("<span style=\"color:red;\">{}</span>", seg);
+                }
+                if fmt.flags.contains(TextFlags::MONOSPACE) {
+                    seg = format!("<code>{}</code>", seg);
+                }
+                if fmt.flags.contains(TextFlags::SUBSCRIPT) {
+                    seg = format!("<sub>{}</sub>", seg);
+                }
+                if fmt.flags.contains(TextFlags::SUPERSCRIPT) {
+                    seg = format!("<sup>{}</sup>", seg);
+                }
+                if fmt.flags.contains(TextFlags::STRIKETHROUGH) {
+                    seg = format!("<del>{}</del>", seg);
+                }
+                if fmt.flags.contains(TextFlags::UNDERWAVE) {
+                    seg = format!(
+                        "<span style=\"text-decoration:underline wavy;\">{}</span>",
+                        seg
+                    );
+                }
+                if fmt.flags.contains(TextFlags::UNDERLINE) {
+                    seg = format!("<span style=\"text-decoration:underline;\">{}</span>", seg);
+                }
+                if fmt.flags.contains(TextFlags::ITALIC) {
+                    seg = format!("<em>{}</em>", seg);
+                }
+                if fmt.flags.contains(TextFlags::BOLD) {
+                    seg = format!("<strong>{}</strong>", seg);
+                }
                 out.push_str(&seg);
             }
         }
 
-        if has_color { out.push_str("</span>"); }
-        if has_size  { out.push_str("</span>"); }
+        if has_color {
+            out.push_str("</span>");
+        }
+        if has_size {
+            out.push_str("</span>");
+        }
 
         Ok(out)
     }
@@ -560,11 +589,14 @@ impl Renderer<Markdown, Universal> for Text {
             out.push_str(&format!("<span style=\"font-size:{:.0}%;\">", size_pct));
         }
         if has_color {
-            out.push_str(&format!("<span style=\"color:rgb({},{},{});\">", cr, cg, cb));
+            out.push_str(&format!(
+                "<span style=\"color:rgb({},{},{});\">",
+                cr, cg, cb
+            ));
         }
 
         for i in 0..formats.len() {
-            let fmt  = formats[i];
+            let fmt = formats[i];
             let text = self.run_text(&formats, i)?;
 
             if fmt.flags.contains(TextFlags::FORMULA) {
@@ -574,31 +606,149 @@ impl Renderer<Markdown, Universal> for Text {
             } else {
                 let mut seg = text.to_owned();
                 // HTML-only flags (no native Markdown equivalent).
-                if fmt.flags.contains(TextFlags::RED)
-                    { seg = format!("<span style=\"color:red;\">{}</span>", seg); }
-                if fmt.flags.contains(TextFlags::SUBSCRIPT)
-                    { seg = format!("<sub>{}</sub>", seg); }
-                if fmt.flags.contains(TextFlags::SUPERSCRIPT)
-                    { seg = format!("<sup>{}</sup>", seg); }
-                if fmt.flags.contains(TextFlags::UNDERWAVE)
-                    { seg = format!("<span style=\"text-decoration:underline wavy;\">{}</span>", seg); }
-                if fmt.flags.contains(TextFlags::UNDERLINE)
-                    { seg = format!("<u>{}</u>", seg); }
+                if fmt.flags.contains(TextFlags::RED) {
+                    seg = format!("<span style=\"color:red;\">{}</span>", seg);
+                }
+                if fmt.flags.contains(TextFlags::SUBSCRIPT) {
+                    seg = format!("<sub>{}</sub>", seg);
+                }
+                if fmt.flags.contains(TextFlags::SUPERSCRIPT) {
+                    seg = format!("<sup>{}</sup>", seg);
+                }
+                if fmt.flags.contains(TextFlags::UNDERWAVE) {
+                    seg = format!(
+                        "<span style=\"text-decoration:underline wavy;\">{}</span>",
+                        seg
+                    );
+                }
+                if fmt.flags.contains(TextFlags::UNDERLINE) {
+                    seg = format!("<u>{}</u>", seg);
+                }
                 // Native Markdown flags.
-                if fmt.flags.contains(TextFlags::MONOSPACE)
-                    { seg = format!("`{}`", seg); }
-                if fmt.flags.contains(TextFlags::STRIKETHROUGH)
-                    { seg = format!("~~{}~~", seg); }
-                if fmt.flags.contains(TextFlags::ITALIC)
-                    { seg = format!("_{}_", seg); }
-                if fmt.flags.contains(TextFlags::BOLD)
-                    { seg = format!("**{}**", seg); }
+                if fmt.flags.contains(TextFlags::MONOSPACE) {
+                    seg = format!("`{}`", seg);
+                }
+                if fmt.flags.contains(TextFlags::STRIKETHROUGH) {
+                    seg = format!("~~{}~~", seg);
+                }
+                if fmt.flags.contains(TextFlags::ITALIC) {
+                    seg = format!("_{}_", seg);
+                }
+                if fmt.flags.contains(TextFlags::BOLD) {
+                    seg = format!("**{}**", seg);
+                }
                 out.push_str(&seg);
             }
         }
 
-        if has_color { out.push_str("</span>"); }
-        if has_size  { out.push_str("</span>"); }
+        if has_color {
+            out.push_str("</span>");
+        }
+        if has_size {
+            out.push_str("</span>");
+        }
+
+        Ok(out)
+    }
+}
+
+impl Renderer<Proprietary, Universal> for Text {
+    /// Render the `Text` element back into the proprietary delimiter format.
+    ///
+    /// This is the inverse of [`Text::parse`]: it reconstructs the
+    /// `\[<flags>]{<content>}` markup that was used to create the element,
+    /// making it suitable for round-tripping or storage.
+    ///
+    /// Plain runs (no flags) are emitted as raw text.  Formatted runs are
+    /// wrapped in `\[<flags>]{…}`.
+    ///
+    /// Global [`TextAttributes`] that differ from their defaults are prefixed
+    /// as proprietary markers before the run content:
+    /// - `font_size` (non-Normal) → `\@size{<name>}` where `<name>` is one of
+    ///   `tiny`, `script`, `footnote`, `small`, `large`, `xlarge`, `xxlarge`.
+    /// - `color` (non-black)      → `\@color{r,g,b}`
+    ///
+    /// Flag letters (same as the parse syntax):
+    ///
+    /// | Letter | Flag           |
+    /// |--------|----------------|
+    /// | `b`    | BOLD           |
+    /// | `i`    | ITALIC         |
+    /// | `u`    | UNDERLINE      |
+    /// | `w`    | UNDERWAVE      |
+    /// | `d`    | STRIKETHROUGH  |
+    /// | `s`    | SUPERSCRIPT    |
+    /// | `x`    | SUBSCRIPT      |
+    /// | `m`    | MONOSPACE      |
+    /// | `f`    | FORMULA        |
+    /// | `r`    | RED            |
+    fn render(&self) -> anyhow::Result<String> {
+        let formats = self.parse_formats();
+
+        let mut out = String::new();
+
+        // ── Global attribute markers ──────────────────────────────────────────
+        if self.attributes.font_size != FontSize::Normal {
+            let name = match self.attributes.font_size {
+                FontSize::Tiny => "tiny",
+                FontSize::Script => "script",
+                FontSize::Footnote => "footnote",
+                FontSize::Small => "small",
+                FontSize::Normal => "normal",
+                FontSize::Large => "large",
+                FontSize::XLarge => "xlarge",
+                FontSize::XXLarge => "xxlarge",
+            };
+            out.push_str(&format!("\\@size{{{}}}", name));
+        }
+
+        let (cr, cg, cb) = self.attributes.color;
+        if (cr, cg, cb) != (0, 0, 0) {
+            out.push_str(&format!("\\@color{{{},{},{}}}", cr, cg, cb));
+        }
+
+        // ── Per-run content ───────────────────────────────────────────────────
+        for i in 0..formats.len() {
+            let fmt = formats[i];
+            let text = self.run_text(&formats, i)?;
+
+            if fmt.flags.is_empty() {
+                out.push_str(text);
+            } else {
+                let mut flags_str = String::new();
+                if fmt.flags.contains(TextFlags::BOLD) {
+                    flags_str.push('b');
+                }
+                if fmt.flags.contains(TextFlags::ITALIC) {
+                    flags_str.push('i');
+                }
+                if fmt.flags.contains(TextFlags::UNDERLINE) {
+                    flags_str.push('u');
+                }
+                if fmt.flags.contains(TextFlags::UNDERWAVE) {
+                    flags_str.push('w');
+                }
+                if fmt.flags.contains(TextFlags::STRIKETHROUGH) {
+                    flags_str.push('d');
+                }
+                if fmt.flags.contains(TextFlags::SUPERSCRIPT) {
+                    flags_str.push('s');
+                }
+                if fmt.flags.contains(TextFlags::SUBSCRIPT) {
+                    flags_str.push('x');
+                }
+                if fmt.flags.contains(TextFlags::MONOSPACE) {
+                    flags_str.push('m');
+                }
+                if fmt.flags.contains(TextFlags::FORMULA) {
+                    flags_str.push('f');
+                }
+                if fmt.flags.contains(TextFlags::RED) {
+                    flags_str.push('r');
+                }
+                out.push_str(&format!("\\[{}]{{{}}}", flags_str, text));
+            }
+        }
 
         Ok(out)
     }
@@ -608,8 +758,8 @@ impl Renderer<Markdown, Universal> for Text {
 
 #[cfg(test)]
 mod tests {
+    use super::super::super::renderer::{Html, Latex, Markdown, Proprietary, Renderer};
     use super::*;
-    use super::super::super::renderer::{Html, Latex, Markdown, Renderer};
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
@@ -627,6 +777,11 @@ mod tests {
 
     fn md(s: &str) -> String {
         <Text as Renderer<Markdown, Universal>>::render(&parse(s)).expect("markdown render failed")
+    }
+
+    fn prop(s: &str) -> String {
+        <Text as Renderer<Proprietary, Universal>>::render(&parse(s))
+            .expect("proprietary render failed")
     }
 
     // ── TextFormat round-trip ─────────────────────────────────────────────────
@@ -653,7 +808,11 @@ mod tests {
             | TextFlags::MONOSPACE
             | TextFlags::FORMULA
             | TextFlags::RED;
-        let fmt = TextFormat { language: 0, start: 0, flags: all };
+        let fmt = TextFormat {
+            language: 0,
+            start: 0,
+            flags: all,
+        };
         assert_eq!(TextFormat::from_bytes(&fmt.to_bytes()).flags, all);
     }
 
@@ -690,11 +849,11 @@ mod tests {
     fn parse_multiple_runs() {
         let t = parse(r"Hello \[b]{World} and \[bi]{this}.");
         let fmts = t.parse_formats();
-        assert_eq!(fmts[0].flags, TextFlags::empty());       // "Hello "
-        assert_eq!(fmts[1].flags, TextFlags::BOLD);          // "World"
-        assert_eq!(fmts[2].flags, TextFlags::empty());       // " and "
+        assert_eq!(fmts[0].flags, TextFlags::empty()); // "Hello "
+        assert_eq!(fmts[1].flags, TextFlags::BOLD); // "World"
+        assert_eq!(fmts[2].flags, TextFlags::empty()); // " and "
         assert_eq!(fmts[3].flags, TextFlags::BOLD | TextFlags::ITALIC); // "this"
-        assert_eq!(fmts[4].flags, TextFlags::empty());       // "."
+        assert_eq!(fmts[4].flags, TextFlags::empty()); // "."
     }
 
     #[test]
@@ -844,21 +1003,30 @@ mod tests {
     fn latex_font_size_large() {
         let mut t = parse(r"\[b]{big}");
         t.attributes.font_size = FontSize::Large;
-        assert_eq!(<Text as Renderer<Latex, Universal>>::render(&t).unwrap(), r"{\large \textbf{big}}");
+        assert_eq!(
+            <Text as Renderer<Latex, Universal>>::render(&t).unwrap(),
+            r"{\large \textbf{big}}"
+        );
     }
 
     #[test]
     fn latex_font_size_tiny() {
         let mut t = parse("tiny");
         t.attributes.font_size = FontSize::Tiny;
-        assert_eq!(<Text as Renderer<Latex, Universal>>::render(&t).unwrap(), r"{\tiny tiny}");
+        assert_eq!(
+            <Text as Renderer<Latex, Universal>>::render(&t).unwrap(),
+            r"{\tiny tiny}"
+        );
     }
 
     #[test]
     fn latex_color_attribute() {
         let mut t = parse("red text");
         t.attributes.color = (255, 0, 0);
-        assert_eq!(<Text as Renderer<Latex, Universal>>::render(&t).unwrap(), r"\textcolor[RGB]{255,0,0}{red text}");
+        assert_eq!(
+            <Text as Renderer<Latex, Universal>>::render(&t).unwrap(),
+            r"\textcolor[RGB]{255,0,0}{red text}"
+        );
     }
 
     #[test]
@@ -866,7 +1034,10 @@ mod tests {
         let mut t = parse("both");
         t.attributes.font_size = FontSize::Small;
         t.attributes.color = (0, 128, 255);
-        assert_eq!(<Text as Renderer<Latex, Universal>>::render(&t).unwrap(), r"{\small \textcolor[RGB]{0,128,255}{both}}");
+        assert_eq!(
+            <Text as Renderer<Latex, Universal>>::render(&t).unwrap(),
+            r"{\small \textcolor[RGB]{0,128,255}{both}}"
+        );
     }
 
     #[test]
@@ -940,10 +1111,7 @@ mod tests {
 
     #[test]
     fn html_red() {
-        assert_eq!(
-            html(r"\[r]{red}"),
-            r#"<span style="color:red;">red</span>"#
-        );
+        assert_eq!(html(r"\[r]{red}"), r#"<span style="color:red;">red</span>"#);
     }
 
     #[test]
@@ -975,13 +1143,19 @@ mod tests {
     fn html_black_color_no_wrapper() {
         let mut t = parse("black");
         t.attributes.color = (0, 0, 0);
-        assert_eq!(<Text as Renderer<Html, Universal>>::render(&t).unwrap(), "black");
+        assert_eq!(
+            <Text as Renderer<Html, Universal>>::render(&t).unwrap(),
+            "black"
+        );
     }
 
     #[test]
     fn html_normal_size_no_wrapper() {
         let t = parse("normal");
-        assert_eq!(<Text as Renderer<Html, Universal>>::render(&t).unwrap(), "normal");
+        assert_eq!(
+            <Text as Renderer<Html, Universal>>::render(&t).unwrap(),
+            "normal"
+        );
     }
 
     #[test]
@@ -1051,10 +1225,7 @@ mod tests {
 
     #[test]
     fn md_red() {
-        assert_eq!(
-            md(r"\[r]{red}"),
-            r#"<span style="color:red;">red</span>"#
-        );
+        assert_eq!(md(r"\[r]{red}"), r#"<span style="color:red;">red</span>"#);
     }
 
     #[test]
@@ -1087,11 +1258,237 @@ mod tests {
         assert_eq!(md(r"\[fb]{x^2}"), "$x^2$");
     }
 
+    // ── Proprietary renderer ───────────────────────────────────────────────────
+
     #[test]
-    fn tex_melt_potpourri() {
-        let mut t = parse(r"In this section, we will introduce \[b]{important} concepts about \[i]{Faraday's Electromagnetic Induction} and \[f]{\int_a^b \mathbf{E} \cdot d\mathbf{l}}.");
+    fn prop_plain_text() {
+        assert_eq!(prop("hello"), "hello");
+    }
+
+    #[test]
+    fn prop_bold() {
+        assert_eq!(prop(r"\[b]{World}"), r"\[b]{World}");
+    }
+
+    #[test]
+    fn prop_italic() {
+        assert_eq!(prop(r"\[i]{slant}"), r"\[i]{slant}");
+    }
+
+    #[test]
+    fn prop_bold_italic() {
+        assert_eq!(prop(r"\[bi]{both}"), r"\[bi]{both}");
+    }
+
+    #[test]
+    fn prop_all_flags() {
+        // Flags are always emitted in canonical order: b i u w d s x m f r.
+        assert_eq!(prop(r"\[biuwdsxmfr]{all}"), r"\[biuwdsxmfr]{all}");
+    }
+
+    #[test]
+    fn prop_mixed_runs() {
+        assert_eq!(prop(r"Hello \[b]{World}!"), r"Hello \[b]{World}!");
+    }
+
+    #[test]
+    fn prop_round_trip() {
+        // Parsing and re-serialising should be a no-op.
+        let src = r"\[b]{bold} and \[i]{italic} and plain.";
+        assert_eq!(prop(src), src);
+    }
+
+    #[test]
+    fn prop_size_attribute() {
+        let mut t = parse("text");
+        t.attributes.font_size = FontSize::Large;
+        assert_eq!(
+            <Text as Renderer<Proprietary, Universal>>::render(&t).unwrap(),
+            r"\@size{large}text"
+        );
+    }
+
+    #[test]
+    fn prop_normal_size_no_marker() {
+        let t = parse("text");
+        assert_eq!(
+            <Text as Renderer<Proprietary, Universal>>::render(&t).unwrap(),
+            "text"
+        );
+    }
+
+    #[test]
+    fn prop_color_attribute() {
+        let mut t = parse("text");
+        t.attributes.color = (255, 0, 128);
+        assert_eq!(
+            <Text as Renderer<Proprietary, Universal>>::render(&t).unwrap(),
+            r"\@color{255,0,128}text"
+        );
+    }
+
+    #[test]
+    fn prop_black_color_no_marker() {
+        let mut t = parse("text");
+        t.attributes.color = (0, 0, 0);
+        assert_eq!(
+            <Text as Renderer<Proprietary, Universal>>::render(&t).unwrap(),
+            "text"
+        );
+    }
+
+    #[test]
+    fn prop_size_and_color_attributes() {
+        let mut t = parse(r"\[b]{hi}");
+        t.attributes.font_size = FontSize::Small;
+        t.attributes.color = (0, 128, 255);
+        assert_eq!(
+            <Text as Renderer<Proprietary, Universal>>::render(&t).unwrap(),
+            r"\@size{small}\@color{0,128,255}\[b]{hi}"
+        );
+    }
+
+    #[test]
+    fn prop_underline() {
+        assert_eq!(prop(r"\[u]{line}"), r"\[u]{line}");
+    }
+
+    #[test]
+    fn prop_underwave() {
+        assert_eq!(prop(r"\[w]{wave}"), r"\[w]{wave}");
+    }
+
+    #[test]
+    fn prop_strikethrough() {
+        assert_eq!(prop(r"\[d]{del}"), r"\[d]{del}");
+    }
+
+    #[test]
+    fn prop_superscript() {
+        assert_eq!(prop(r"\[s]{up}"), r"\[s]{up}");
+    }
+
+    #[test]
+    fn prop_subscript() {
+        assert_eq!(prop(r"\[x]{down}"), r"\[x]{down}");
+    }
+
+    #[test]
+    fn prop_monospace() {
+        assert_eq!(prop(r"\[m]{code}"), r"\[m]{code}");
+    }
+
+    #[test]
+    fn prop_formula() {
+        assert_eq!(prop(r"\[f]{E=mc^2}"), r"\[f]{E=mc^2}");
+    }
+
+    #[test]
+    fn prop_red() {
+        assert_eq!(prop(r"\[r]{red}"), r"\[r]{red}");
+    }
+
+    #[test]
+    fn prop_formula_with_other_flags_round_trips() {
+        // The parser accepts \[fb] and stores both flags; the proprietary
+        // renderer faithfully re-emits whatever flags are recorded.
+        assert_eq!(prop(r"\[fb]{x^2}"), r"\[bf]{x^2}");
+    }
+
+    #[test]
+    fn prop_nested_braces_in_formula() {
+        assert_eq!(prop(r"\[f]{x^{2}}"), r"\[f]{x^{2}}");
+    }
+
+    #[test]
+    fn prop_empty_content() {
+        assert_eq!(prop(r"\[b]{}"), r"\[b]{}");
+    }
+
+    #[test]
+    fn prop_empty_input() {
+        assert_eq!(prop(""), "");
+    }
+
+    #[test]
+    fn prop_size_tiny() {
+        let mut t = parse("x");
+        t.attributes.font_size = FontSize::Tiny;
+        assert_eq!(
+            <Text as Renderer<Proprietary, Universal>>::render(&t).unwrap(),
+            r"\@size{tiny}x"
+        );
+    }
+
+    #[test]
+    fn prop_size_script() {
+        let mut t = parse("x");
+        t.attributes.font_size = FontSize::Script;
+        assert_eq!(
+            <Text as Renderer<Proprietary, Universal>>::render(&t).unwrap(),
+            r"\@size{script}x"
+        );
+    }
+
+    #[test]
+    fn prop_size_footnote() {
+        let mut t = parse("x");
+        t.attributes.font_size = FontSize::Footnote;
+        assert_eq!(
+            <Text as Renderer<Proprietary, Universal>>::render(&t).unwrap(),
+            r"\@size{footnote}x"
+        );
+    }
+
+    #[test]
+    fn prop_size_xlarge() {
+        let mut t = parse("x");
+        t.attributes.font_size = FontSize::XLarge;
+        assert_eq!(
+            <Text as Renderer<Proprietary, Universal>>::render(&t).unwrap(),
+            r"\@size{xlarge}x"
+        );
+    }
+
+    #[test]
+    fn prop_size_xxlarge() {
+        let mut t = parse("x");
+        t.attributes.font_size = FontSize::XXLarge;
+        assert_eq!(
+            <Text as Renderer<Proprietary, Universal>>::render(&t).unwrap(),
+            r"\@size{xxlarge}x"
+        );
+    }
+
+    #[test]
+    fn prop_multiple_formatted_runs() {
+        let src = r"\[b]{bold} middle \[i]{italic}";
+        assert_eq!(prop(src), src);
+    }
+
+    #[test]
+    fn prop_potpourri() {
+        let mut t = parse(
+            r"In this section, we will introduce \[b]{important} concepts about \[i]{Faraday's Electromagnetic Induction} and \[f]{\int_a^b \mathbf{E} \cdot d\mathbf{l}}.",
+        );
         t.attributes.font_size = FontSize::Large;
         t.attributes.color = (0, 128, 255);
-        assert_eq!(<Text as Renderer<Latex, Universal>>::render(&t).unwrap(), r#"{\large \textcolor[RGB]{0,128,255}{In this section, we will introduce \textbf{important} concepts about \textit{Faraday's Electromagnetic Induction} and $\int_a^b \mathbf{E} \cdot d\mathbf{l}$.}}"#);
+        assert_eq!(
+            <Text as Renderer<Proprietary, Universal>>::render(&t).unwrap(),
+            r"\@size{large}\@color{0,128,255}In this section, we will introduce \[b]{important} concepts about \[i]{Faraday's Electromagnetic Induction} and \[f]{\int_a^b \mathbf{E} \cdot d\mathbf{l}}."
+        );
+    }
+
+    #[test]
+    fn tex_melt_potpourri() {
+        let mut t = parse(
+            r"In this section, we will introduce \[b]{important} concepts about \[i]{Faraday's Electromagnetic Induction} and \[f]{\int_a^b \mathbf{E} \cdot d\mathbf{l}}.",
+        );
+        t.attributes.font_size = FontSize::Large;
+        t.attributes.color = (0, 128, 255);
+        assert_eq!(
+            <Text as Renderer<Latex, Universal>>::render(&t).unwrap(),
+            r#"{\large \textcolor[RGB]{0,128,255}{In this section, we will introduce \textbf{important} concepts about \textit{Faraday's Electromagnetic Induction} and $\int_a^b \mathbf{E} \cdot d\mathbf{l}$.}}"#
+        );
     }
 }

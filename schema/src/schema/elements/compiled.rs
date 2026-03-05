@@ -1,5 +1,9 @@
-use crate::{DocumentClass, LatexBuilder, XeLaTeX, schema::utils::{compile_latex_to_svg, compile_svg_to_png}};
+use crate::{
+    XeLaTeX,
+    schema::utils::{compile_latex_to_svg, compile_svg_to_png},
+};
 
+#[derive(Clone, Debug)]
 pub struct CompiledGraph {
     pub tex_code: String,
     pub svg_content: String,

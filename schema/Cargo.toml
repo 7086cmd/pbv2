@@ -7,7 +7,9 @@ version.workspace = true
 [dependencies]
 anyhow = "1.0.102"
 async-trait = "0.1.89"
+base64 = "0.22.1"
 bitflags = { version = "2.11.0", features = ["std", "serde"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "tls-native-tls", "postgres", "macros"] }
 hex = "0.4.3"
 hex-literal = "1.1.0"
 math-core = "0.5.2"

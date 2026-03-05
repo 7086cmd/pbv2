@@ -1,4 +1,3 @@
-mod paragraph;
-mod elements;
-mod renderer;
-mod utils;
+pub(crate) mod elements;
+pub(crate) mod renderer;
+pub(crate) mod utils;

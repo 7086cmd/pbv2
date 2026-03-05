@@ -1,6 +1,6 @@
-use std::path::PathBuf;
 use crate::engines::Engine;
 use anyhow::Result;
+use std::path::PathBuf;
 
 pub struct XeLaTeX;
 
@@ -14,8 +14,10 @@ impl Engine for XeLaTeX {
         let output = tokio::process::Command::new("xelatex")
             .current_dir(addr.parent().unwrap())
             .arg("-interaction=nonstopmode")
+            .arg("--shell-escape")
             .arg(addr.to_str().unwrap())
-            .output().await?;
+            .output()
+            .await?;
 
         if !output.status.success() {
             return Err(anyhow::anyhow!(

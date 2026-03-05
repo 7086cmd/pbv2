@@ -26,11 +26,17 @@ impl ToString for DocumentClass {
 
 impl DocumentClass {
     pub fn require_toc(&self) -> bool {
-        matches!(self, DocumentClass::Article { toc: true } | DocumentClass::Report | DocumentClass::Book)
+        matches!(
+            self,
+            DocumentClass::Article { toc: true } | DocumentClass::Report | DocumentClass::Book
+        )
     }
 
     pub fn require_title(&self) -> bool {
-        !matches!(self, DocumentClass::Standalone | DocumentClass::Subfile { .. })
+        !matches!(
+            self,
+            DocumentClass::Standalone | DocumentClass::Subfile { .. }
+        )
     }
 
     pub fn require_extra_preamble(&self) -> bool {
@@ -45,7 +51,6 @@ impl LatexBuilder {
             preamble: Vec::new(),
             content: Vec::new(),
         };
-        
 
         ego.add_to_preamble(include_str!("../preambles/preamble.tex").to_string());
 

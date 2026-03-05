@@ -27,6 +27,10 @@
 \usepackage{upgreek}
 \usepackage{xstring}
 \usepackage{pdfpages}
+\usepackage{environ}
+\NewEnviron{writebase64}[1]{%
+  \immediate\write18{printf '\%s' '\BODY' | base64 -d > #1}%
+}
 \usepackage[framemethod=tikz]{mdframed}
 \setmainfont{Times New Roman}
 \newcommand{\varparallel}{\mathrel{/\mkern-5mu/}}

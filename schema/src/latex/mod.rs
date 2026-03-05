@@ -1,2 +1,2 @@
 mod builder;
-pub use builder::{LatexBuilder, DocumentClass};
+pub use builder::{DocumentClass, LatexBuilder};
