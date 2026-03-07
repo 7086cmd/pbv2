@@ -1,15 +1,18 @@
 use crate::schema::elements::{BlankAnswer, ChoicePool};
 use crate::schema::renderer::{Html, Latex, Markdown, Problem, Renderer, Universal};
-use crate::{Blank, Image, List, Table, Text};
+use crate::{Blank, CodeListing, Image, List, Table, Text};
 
+#[derive(Clone, Debug)]
 pub enum Element {
     Text(Text),
     Table(Table),
     Image(Image),
     List(List),
     Blank(Blank),
+    CodeListing(CodeListing),
 }
 
+#[derive(Clone, Debug)]
 pub struct Paragraph {
     pub elements: Vec<Element>,
     pub choice_pool: Option<ChoicePool>,
@@ -59,6 +62,12 @@ impl From<Blank> for Element {
     }
 }
 
+impl From<CodeListing> for Element {
+    fn from(listing: CodeListing) -> Self {
+        Element::CodeListing(listing)
+    }
+}
+
 // ── Element – Renderer impls ──────────────────────────────────────────────────
 //
 // `Element` and `Paragraph` implement `Renderer<T, Universal>`, gaining
@@ -78,6 +87,7 @@ impl Renderer<Latex, Universal> for Element {
             Element::Image(i) => <Image as Renderer<Latex, Universal>>::render(i),
             Element::List(l) => <List as Renderer<Latex, Universal>>::render(l),
             Element::Blank(b) => <Blank as Renderer<Latex, Problem>>::render(b),
+            Element::CodeListing(c) => <CodeListing as Renderer<Latex, Problem>>::render(c),
         }
     }
 }
@@ -90,6 +100,7 @@ impl Renderer<Html, Universal> for Element {
             Element::Image(i) => <Image as Renderer<Html, Universal>>::render(i),
             Element::List(l) => <List as Renderer<Html, Universal>>::render(l),
             Element::Blank(b) => <Blank as Renderer<Html, Problem>>::render(b),
+            Element::CodeListing(c) => <CodeListing as Renderer<Html, Problem>>::render(c),
         }
     }
 }
@@ -102,6 +113,7 @@ impl Renderer<Markdown, Universal> for Element {
             Element::Image(i) => <Image as Renderer<Markdown, Universal>>::render(i),
             Element::List(l) => <List as Renderer<Markdown, Universal>>::render(l),
             Element::Blank(b) => <Blank as Renderer<Markdown, Problem>>::render(b),
+            Element::CodeListing(c) => <CodeListing as Renderer<Markdown, Problem>>::render(c),
         }
     }
 }

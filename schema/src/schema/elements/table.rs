@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use crate::Text;
 use crate::schema::renderer::{Html, Latex, Markdown, Renderer, Universal};
 
+#[derive(Clone, Debug)]
 pub struct Cell {
     pub content: Text,
     pub row_span: usize,
@@ -12,6 +13,7 @@ pub struct Cell {
     pub header: bool,
 }
 
+#[derive(Clone, Debug)]
 pub struct Table {
     pub rows: usize,
     pub cols: usize,

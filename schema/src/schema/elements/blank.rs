@@ -8,6 +8,7 @@ use crate::{
     },
 };
 
+#[derive(Clone, Debug)]
 pub enum BlankAnswer {
     Text(Text),
     SingleChoice(usize, OrderType),
@@ -23,7 +24,7 @@ impl Renderer<Latex, Solution> for BlankAnswer {
                 .iter()
                 .map(|i| order_type.process(*i + 1))
                 .collect::<Vec<_>>()
-                .join(", ")),
+                .join("")),
         }
     }
 }
@@ -37,7 +38,7 @@ impl Renderer<Markdown, Solution> for BlankAnswer {
                 .iter()
                 .map(|i| order_type.process(*i + 1))
                 .collect::<Vec<_>>()
-                .join(", ")),
+                .join("")),
         }
     }
 }
@@ -51,11 +52,12 @@ impl Renderer<Html, Solution> for BlankAnswer {
                 .iter()
                 .map(|i| order_type.process(*i + 1))
                 .collect::<Vec<_>>()
-                .join(", ")),
+                .join("")),
         }
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Blank {
     pub id: i32,
     /// The mark of the blank indicates the max mark that the student can receive for this blank. It is used for grading purposes and can be a floating-point number to allow for partial marks.
@@ -332,7 +334,7 @@ mod tests {
 
     #[test]
     fn latex_solution_multiple_choices_joined_by_comma() {
-        // indices [0, 2] → process(1)="A", process(3)="C" → "A, C"
+        // indices [0, 2] → process(1)="A", process(3)="C" → "AC"
         let b = Blank::new(
             1,
             1.0,
@@ -340,12 +342,12 @@ mod tests {
             3.0,
         );
         let out = <Blank as Renderer<Latex, Solution>>::render(&b).unwrap();
-        assert_eq!(out, "\\uline{A, C}");
+        assert_eq!(out, "\\uline{AC}");
     }
 
     #[test]
     fn html_solution_multiple_choices_decimal() {
-        // indices [0, 1, 3] → "1, 2, 4"
+        // indices [0, 1, 3] → "124"
         let b = Blank::new(
             1,
             1.0,
@@ -353,12 +355,12 @@ mod tests {
             3.0,
         );
         let out = <Blank as Renderer<Html, Solution>>::render(&b).unwrap();
-        assert_eq!(out, "<u>1, 2, 4</u>");
+        assert_eq!(out, "<u>124</u>");
     }
 
     #[test]
     fn md_solution_multiple_choices_lowercase_alpha() {
-        // indices [0, 3, 5] → "a, d, f"
+        // indices [0, 3, 5] → "adf"
         let b = Blank::new(
             1,
             1.0,
@@ -366,7 +368,7 @@ mod tests {
             3.0,
         );
         let out = <Blank as Renderer<Markdown, Solution>>::render(&b).unwrap();
-        assert_eq!(out, "<u>a, d, f</u>");
+        assert_eq!(out, "<u>adf</u>");
     }
 
     #[test]

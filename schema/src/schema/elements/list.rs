@@ -106,6 +106,7 @@ pub enum OrderFormat {
     None,
 }
 
+#[derive(Clone, Debug)]
 pub struct List {
     pub items: Vec<Paragraph>,
     pub order_type: OrderType,
@@ -115,7 +116,7 @@ pub struct List {
 impl OrderType {
     /// LaTeX `enumitem` counter command, e.g. `\arabic`, `\alph`.
     /// Returns `None` for `Unordered`.
-    fn latex_counter(&self) -> Option<&'static str> {
+    pub(crate) fn latex_counter(&self) -> Option<&'static str> {
         match self {
             OrderType::Decimal => Some("\\arabic"),
             OrderType::LowercaseAlphabetic => Some("\\alph"),
@@ -127,7 +128,7 @@ impl OrderType {
     }
 
     /// HTML `<ol type="…">` attribute value.  Returns `None` for `Unordered`.
-    fn html_type(&self) -> Option<&'static str> {
+    pub(crate) fn html_type(&self) -> Option<&'static str> {
         match self {
             OrderType::Decimal => Some("1"),
             OrderType::LowercaseAlphabetic => Some("a"),
@@ -141,7 +142,7 @@ impl OrderType {
 
 impl OrderFormat {
     /// Wrap `counter_cmd` (e.g. `\\arabic*`) according to this format.
-    fn wrap_latex(&self, counter: &str) -> String {
+    pub(crate) fn wrap_latex(&self, counter: &str) -> String {
         match self {
             OrderFormat::Period => format!("{}.", counter),
             OrderFormat::Parenthesis => format!("({})", counter),

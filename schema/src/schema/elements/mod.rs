@@ -6,6 +6,7 @@ mod image;
 mod list;
 mod table;
 mod text;
+mod listings;
 
 pub use blank::{Blank, BlankAnswer};
 pub use choice::{Choice, ChoicePool};
@@ -15,3 +16,4 @@ pub use image::{BinaryImage, Image, ImageFormat};
 pub use list::{List, OrderFormat, OrderType};
 pub use table::{Cell, Table};
 pub use text::{FontSize, Text, TextAttributes, TextFlags, TextFormat};
+pub use listings::{CodeListing, ProgrammingLanguage};
