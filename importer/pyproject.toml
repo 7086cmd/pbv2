@@ -1,0 +1,30 @@
+[project]
+name = "importer"
+version = "0.1.0"
+description = "PDF exam paper importer for PBv2"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    # LLM providers
+    "anthropic>=0.84.0",
+    "google-genai>=1.66.0",
+    "openai>=2.26.0",
+    # Database
+    "sqlalchemy>=2.0.48",
+    "psycopg2-binary>=2.9",
+    # PDF rendering
+    "pymupdf>=1.24",
+    # Image manipulation (figure cropping)
+    "pillow>=10.0",
+    # HTTP client (Baidu OCR)
+    "httpx[socks]>=0.27",
+    # CLI
+    "click>=8.1",
+    # Async support
+    "asyncio>=4.0.0",
+    "python-dotenv>=1.2.2",
+    "pypandoc>=1.16.2",
+]
+
+[project.scripts]
+pbv2-import = "main:cli"

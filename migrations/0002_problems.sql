@@ -4,7 +4,7 @@
 CREATE TYPE question_block_kind AS ENUM ('essay', 'proof', 'solve', 'none');
 
 -- Discriminator for the ElementalProblem variant.
-CREATE TYPE elemental_problem_kind AS ENUM ('question', 'block');
+CREATE TYPE elemental_problem_kind AS ENUM ('question', 'block', 'plain');
 
 -- ── problem_categories ────────────────────────────────────────────────────────
 --
