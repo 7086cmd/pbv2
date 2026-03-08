@@ -1,6 +1,6 @@
 use crate::schema::elements::{BlankAnswer, ChoicePool};
 use crate::schema::renderer::{Html, Latex, Markdown, Problem, Renderer, Universal};
-use crate::{Blank, CodeListing, Image, List, Table, Text};
+use crate::{Blank, CodeListing, Image, List, SiUnitX, Table, Text};
 
 #[derive(Clone, Debug)]
 pub enum Element {
@@ -10,6 +10,7 @@ pub enum Element {
     List(List),
     Blank(Blank),
     CodeListing(CodeListing),
+    Si(SiUnitX),
 }
 
 #[derive(Clone, Debug)]
@@ -68,6 +69,12 @@ impl From<CodeListing> for Element {
     }
 }
 
+impl From<SiUnitX> for Element {
+    fn from(si: SiUnitX) -> Self {
+        Element::Si(si)
+    }
+}
+
 // ── Element – Renderer impls ──────────────────────────────────────────────────
 //
 // `Element` and `Paragraph` implement `Renderer<T, Universal>`, gaining
@@ -88,6 +95,7 @@ impl Renderer<Latex, Universal> for Element {
             Element::List(l) => <List as Renderer<Latex, Universal>>::render(l),
             Element::Blank(b) => <Blank as Renderer<Latex, Problem>>::render(b),
             Element::CodeListing(c) => <CodeListing as Renderer<Latex, Problem>>::render(c),
+            Element::Si(s) => <SiUnitX as Renderer<Latex, Universal>>::render(s),
         }
     }
 }
@@ -101,6 +109,7 @@ impl Renderer<Html, Universal> for Element {
             Element::List(l) => <List as Renderer<Html, Universal>>::render(l),
             Element::Blank(b) => <Blank as Renderer<Html, Problem>>::render(b),
             Element::CodeListing(c) => <CodeListing as Renderer<Html, Problem>>::render(c),
+            Element::Si(s) => <SiUnitX as Renderer<Html, Universal>>::render(s),
         }
     }
 }
@@ -114,6 +123,7 @@ impl Renderer<Markdown, Universal> for Element {
             Element::List(l) => <List as Renderer<Markdown, Universal>>::render(l),
             Element::Blank(b) => <Blank as Renderer<Markdown, Problem>>::render(b),
             Element::CodeListing(c) => <CodeListing as Renderer<Markdown, Problem>>::render(c),
+            Element::Si(s) => <SiUnitX as Renderer<Markdown, Universal>>::render(s),
         }
     }
 }

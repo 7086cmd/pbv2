@@ -7,6 +7,7 @@ mod list;
 mod table;
 mod text;
 mod listings;
+mod si;
 
 pub use blank::{Blank, BlankAnswer};
 pub use choice::{Choice, ChoicePool};
@@ -17,3 +18,4 @@ pub use list::{List, OrderFormat, OrderType};
 pub use table::{Cell, Table};
 pub use text::{FontSize, Text, TextAttributes, TextFlags, TextFormat};
 pub use listings::{CodeListing, ProgrammingLanguage};
+pub use si::{CompoundUnit, SIUnit, SiPrefix, SiUnitX, UnitFactor};

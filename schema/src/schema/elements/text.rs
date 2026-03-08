@@ -360,6 +360,7 @@ impl std::str::FromStr for Text {
 use crate::schema::renderer::Universal;
 
 use super::super::renderer::{Html, Latex, Markdown, Proprietary, Renderer};
+use super::si::SiUnitX;
 
 impl Renderer<Latex, Universal> for Text {
     /// Render the `Text` element into a LaTeX fragment and write it to stdout.
@@ -412,6 +413,15 @@ impl Renderer<Latex, Universal> for Text {
             let text = self.run_text(&formats, i)?;
 
             if fmt.flags.contains(TextFlags::FORMULA) {
+                // If the formula text is a siunitx command, delegate to the
+                // SiUnitX renderer (which emits the proper macro) instead of
+                // wrapping in `$...$`.
+                if SiUnitX::is_si_command(text) {
+                    if let Ok(si) = text.parse::<SiUnitX>() {
+                        out.push_str(&<SiUnitX as Renderer<Latex, Universal>>::render(&si)?);
+                        continue;
+                    }
+                }
                 out.push('$');
                 out.push_str(text);
                 out.push('$');
@@ -505,6 +515,19 @@ impl Renderer<Html, Universal> for Text {
             let text = self.run_text(&formats, i)?;
 
             if fmt.flags.contains(TextFlags::FORMULA) {
+                // chemformula → mhchem (must be checked before siunitx)
+                if is_chem_formula(text) {
+                    out.push_str(&chemformula_to_mhchem(text));
+                    continue;
+                }
+                // Delegate siunitx commands to the HTML SiUnitX renderer
+                // instead of wrapping in `$...$` for MathJax.
+                if SiUnitX::is_si_command(text) {
+                    if let Ok(si) = text.parse::<SiUnitX>() {
+                        out.push_str(&<SiUnitX as Renderer<Html, Universal>>::render(&si)?);
+                        continue;
+                    }
+                }
                 out.push('$');
                 out.push_str(text);
                 out.push('$');
@@ -600,6 +623,19 @@ impl Renderer<Markdown, Universal> for Text {
             let text = self.run_text(&formats, i)?;
 
             if fmt.flags.contains(TextFlags::FORMULA) {
+                // chemformula → mhchem (must be checked before siunitx)
+                if is_chem_formula(text) {
+                    out.push_str(&chemformula_to_mhchem(text));
+                    continue;
+                }
+                // Delegate siunitx commands to the Markdown SiUnitX renderer
+                // for clean Unicode output instead of `$...$`.
+                if SiUnitX::is_si_command(text) {
+                    if let Ok(si) = text.parse::<SiUnitX>() {
+                        out.push_str(&<SiUnitX as Renderer<Markdown, Universal>>::render(&si)?);
+                        continue;
+                    }
+                }
                 out.push('$');
                 out.push_str(text);
                 out.push('$');
@@ -752,6 +788,100 @@ impl Renderer<Proprietary, Universal> for Text {
 
         Ok(out)
     }
+}
+
+// ── Chemformula → mhchem conversion ──────────────────────────────────────────
+
+/// Returns `true` when `s` contains chemformula-specific commands
+/// (`\ch{…}`, `\gas{…}`, `\lqd{…}`, `\sld{…}`, `\aq{…}`).
+fn is_chem_formula(s: &str) -> bool {
+    let s = s.trim();
+    s.starts_with("\\ch{")
+        || s.contains("\\gas{")
+        || s.contains("\\lqd{")
+        || s.contains("\\sld{")
+        || s.contains("\\aq{")
+}
+
+/// Convert a chemformula expression to mhchem format, returning `$\ce{…}$`.
+///
+/// Conversions applied:
+/// - `\ch{…}`  → contents extracted and placed inside `\ce{…}`
+/// - `\gas{X}` → `X(g)`  (empty X → just `(g)`)
+/// - `\lqd{X}` → `X(l)`
+/// - `\sld{X}` → `X(s)`
+/// - `\aq{X}`  → `X(aq)`
+///
+/// The result is wrapped in `$…$` so MathJax / KaTeX will render it.
+fn chemformula_to_mhchem(s: &str) -> String {
+    let s = s.trim();
+
+    // Strip outer \ch{...} wrapper if present.
+    let inner: String = if let Some(rest) = s.strip_prefix("\\ch{") {
+        match find_brace_content(rest) {
+            Some((content, _)) => content.to_owned(),
+            None => s.to_owned(),
+        }
+    } else {
+        s.to_owned()
+    };
+
+    // Convert state macros.
+    let inner = replace_state_macro(&inner, "\\gas", "g");
+    let inner = replace_state_macro(&inner, "\\lqd", "l");
+    let inner = replace_state_macro(&inner, "\\sld", "s");
+    let inner = replace_state_macro(&inner, "\\aq",  "aq");
+
+    format!("$\\ce{{{}}}$", inner)
+}
+
+/// Replace all `\cmd{X}` occurrences with `X(state)`.  Empty `X` → `(state)`.
+fn replace_state_macro(s: &str, cmd: &str, state: &str) -> String {
+    let search = format!("{}{{", cmd);
+    let mut result = String::with_capacity(s.len() + 16);
+    let mut remaining: &str = s;
+    while let Some(pos) = remaining.find(search.as_str()) {
+        result.push_str(&remaining[..pos]);
+        let after_brace = &remaining[pos + search.len()..]; // after the `{`
+        match find_brace_content(after_brace) {
+            Some((content, rest)) => {
+                if !content.is_empty() {
+                    result.push_str(content);
+                }
+                result.push('(');
+                result.push_str(state);
+                result.push(')');
+                remaining = rest;
+            }
+            None => {
+                // Malformed — leave the rest verbatim.
+                result.push_str(&remaining[pos..]);
+                remaining = "";
+                break;
+            }
+        }
+    }
+    result.push_str(remaining);
+    result
+}
+
+/// Given `s` which is the string *after* an opening `{` has been consumed,
+/// find the matching `}` and return `(inner, rest_after_closing_brace)`.
+fn find_brace_content(s: &str) -> Option<(&str, &str)> {
+    let mut depth: usize = 1;
+    for (i, c) in s.char_indices() {
+        match c {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some((&s[..i], &s[i + 1..]));
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -1490,5 +1620,203 @@ mod tests {
             <Text as Renderer<Latex, Universal>>::render(&t).unwrap(),
             r#"{\large \textcolor[RGB]{0,128,255}{In this section, we will introduce \textbf{important} concepts about \textit{Faraday's Electromagnetic Induction} and $\int_a^b \mathbf{E} \cdot d\mathbf{l}$.}}"#
         );
+    }
+
+    // ── Chemformula helpers ───────────────────────────────────────────────────
+
+    #[test]
+    fn is_chem_formula_detects_ch() {
+        assert!(is_chem_formula(r"\ch{H2O}"));
+    }
+
+    #[test]
+    fn is_chem_formula_detects_gas() {
+        assert!(is_chem_formula(r"\gas{CO2}"));
+    }
+
+    #[test]
+    fn is_chem_formula_detects_lqd() {
+        assert!(is_chem_formula(r"\lqd{H2O}"));
+    }
+
+    #[test]
+    fn is_chem_formula_detects_sld() {
+        assert!(is_chem_formula(r"\sld{NaCl}"));
+    }
+
+    #[test]
+    fn is_chem_formula_detects_aq() {
+        assert!(is_chem_formula(r"\aq{Na+}"));
+    }
+
+    #[test]
+    fn is_chem_formula_detects_state_inside_ch() {
+        assert!(is_chem_formula(r"\ch{H2O\gas{}}"));
+    }
+
+    #[test]
+    fn is_chem_formula_false_for_plain_math() {
+        assert!(!is_chem_formula(r"\frac{1}{2}"));
+        assert!(!is_chem_formula(r"x^2 + y^2"));
+    }
+
+    #[test]
+    fn chem_to_mhchem_simple_ch() {
+        assert_eq!(chemformula_to_mhchem(r"\ch{H2O}"), r"$\ce{H2O}$");
+    }
+
+    #[test]
+    fn chem_to_mhchem_ch_with_gas() {
+        assert_eq!(chemformula_to_mhchem(r"\ch{CO2\gas{}}"), r"$\ce{CO2(g)}$");
+    }
+
+    #[test]
+    fn chem_to_mhchem_ch_with_gas_content() {
+        assert_eq!(chemformula_to_mhchem(r"\ch{\gas{CO2}}"), r"$\ce{CO2(g)}$");
+    }
+
+    #[test]
+    fn chem_to_mhchem_ch_with_lqd() {
+        assert_eq!(chemformula_to_mhchem(r"\ch{H2O\lqd{}}"), r"$\ce{H2O(l)}$");
+    }
+
+    #[test]
+    fn chem_to_mhchem_ch_with_sld() {
+        assert_eq!(chemformula_to_mhchem(r"\ch{NaCl\sld{}}"), r"$\ce{NaCl(s)}$");
+    }
+
+    #[test]
+    fn chem_to_mhchem_ch_with_aq() {
+        assert_eq!(chemformula_to_mhchem(r"\ch{Na+\aq{}}"), r"$\ce{Na+(aq)}$");
+    }
+
+    #[test]
+    fn chem_to_mhchem_bare_gas_no_ch_wrapper() {
+        assert_eq!(chemformula_to_mhchem(r"\gas{CO2}"), r"$\ce{CO2(g)}$");
+    }
+
+    #[test]
+    fn chem_to_mhchem_bare_aq_no_ch_wrapper() {
+        assert_eq!(chemformula_to_mhchem(r"\aq{NaCl}"), r"$\ce{NaCl(aq)}$");
+    }
+
+    #[test]
+    fn chem_to_mhchem_multiple_state_macros() {
+        // Reaction with two state annotations inside one \ch{}
+        assert_eq!(
+            chemformula_to_mhchem(r"\ch{H2\gas{} + O2\gas{} -> H2O\lqd{}}"),
+            r"$\ce{H2(g) + O2(g) -> H2O(l)}$"
+        );
+    }
+
+    #[test]
+    fn chem_to_mhchem_empty_state_content() {
+        // \gas{} with empty braces → just (g)
+        assert_eq!(chemformula_to_mhchem(r"\ch{\gas{}}"), r"$\ce{(g)}$");
+    }
+
+    #[test]
+    fn replace_state_macro_no_match() {
+        assert_eq!(replace_state_macro("H2O", "\\gas", "g"), "H2O");
+    }
+
+    #[test]
+    fn replace_state_macro_single() {
+        assert_eq!(replace_state_macro(r"\gas{CO2}", "\\gas", "g"), "CO2(g)");
+    }
+
+    #[test]
+    fn replace_state_macro_empty_arg() {
+        assert_eq!(replace_state_macro(r"\gas{}", "\\gas", "g"), "(g)");
+    }
+
+    #[test]
+    fn replace_state_macro_multiple() {
+        assert_eq!(
+            replace_state_macro(r"\gas{A} + \gas{B}", "\\gas", "g"),
+            "A(g) + B(g)"
+        );
+    }
+
+    // ── Chemformula in HTML renderer ──────────────────────────────────────────
+
+    #[test]
+    fn html_chem_formula_ch_simple() {
+        assert_eq!(html(r"\[f]{\ch{H2O}}"), r"$\ce{H2O}$");
+    }
+
+    #[test]
+    fn html_chem_formula_ch_with_state() {
+        assert_eq!(html(r"\[f]{\ch{CO2\gas{}}}"), r"$\ce{CO2(g)}$");
+    }
+
+    #[test]
+    fn html_chem_formula_bare_gas() {
+        assert_eq!(html(r"\[f]{\gas{CO2}}"), r"$\ce{CO2(g)}$");
+    }
+
+    #[test]
+    fn html_chem_formula_reaction() {
+        assert_eq!(
+            html(r"\[f]{\ch{H2\gas{} + O2\gas{} -> H2O\lqd{}}}"),
+            r"$\ce{H2(g) + O2(g) -> H2O(l)}$"
+        );
+    }
+
+    #[test]
+    fn html_chem_formula_mixed_with_text() {
+        assert_eq!(
+            html(r"Water is \[f]{\ch{H2O}}."),
+            r"Water is $\ce{H2O}$."
+        );
+    }
+
+    #[test]
+    fn html_chem_passes_through_plain_formula_unchanged() {
+        // Regular math should still be $...$
+        assert_eq!(html(r"\[f]{x^2}"), r"$x^2$");
+    }
+
+    // ── Chemformula in Markdown renderer ──────────────────────────────────────
+
+    #[test]
+    fn md_chem_formula_ch_simple() {
+        assert_eq!(md(r"\[f]{\ch{H2O}}"), r"$\ce{H2O}$");
+    }
+
+    #[test]
+    fn md_chem_formula_ch_with_state() {
+        assert_eq!(md(r"\[f]{\ch{CO2\gas{}}}"), r"$\ce{CO2(g)}$");
+    }
+
+    #[test]
+    fn md_chem_formula_bare_aq() {
+        assert_eq!(md(r"\[f]{\aq{Na+}}"), r"$\ce{Na+(aq)}$");
+    }
+
+    #[test]
+    fn md_chem_formula_reaction() {
+        assert_eq!(
+            md(r"\[f]{\ch{NaCl\sld{} -> Na+\aq{} + Cl-\aq{}}}"),
+            r"$\ce{NaCl(s) -> Na+(aq) + Cl-(aq)}$"
+        );
+    }
+
+    #[test]
+    fn md_chem_passes_through_plain_formula_unchanged() {
+        assert_eq!(md(r"\[f]{x^2}"), r"$x^2$");
+    }
+
+    // ── LaTeX renderer leaves chemformula untouched ───────────────────────────
+
+    #[test]
+    fn latex_chem_formula_passthrough() {
+        // In LaTeX the chemformula package is available so we emit as-is in $...$
+        assert_eq!(latex(r"\[f]{\ch{H2O}}"), r"$\ch{H2O}$");
+    }
+
+    #[test]
+    fn latex_chem_formula_with_state_passthrough() {
+        assert_eq!(latex(r"\[f]{\ch{CO2\gas{}}}"), r"$\ch{CO2\gas{}}$");
     }
 }

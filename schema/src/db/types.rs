@@ -214,6 +214,7 @@ impl From<&QuestionBlock> for DbQuestionBlockKind {
 pub enum DbElementalProblemKind {
     Question,
     Block,
+    Plain
 }
 
 impl From<&ElementalProblem> for DbElementalProblemKind {
@@ -221,6 +222,7 @@ impl From<&ElementalProblem> for DbElementalProblemKind {
         match v {
             ElementalProblem::Question(_) => DbElementalProblemKind::Question,
             ElementalProblem::Block(_)    => DbElementalProblemKind::Block,
+            ElementalProblem::Plain(_)    => DbElementalProblemKind::Plain,
         }
     }
 }
