@@ -8,6 +8,7 @@
 use sqlx::Type;
 
 use crate::schema::elements::{FontSize, ImageFormat, OrderFormat, OrderType};
+use crate::schema::problems::{QuestionBlock, ElementalProblem};
 
 // ── font_size ─────────────────────────────────────────────────────────────────
 
@@ -180,4 +181,46 @@ pub enum DbElementKind {
     Image,
     List,
     Blank,
+}
+
+// ── question_block_kind ───────────────────────────────────────────────────────
+
+/// Maps to the `question_block_kind` PostgreSQL enum.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Type)]
+#[sqlx(type_name = "question_block_kind", rename_all = "snake_case")]
+pub enum DbQuestionBlockKind {
+    Essay,
+    Proof,
+    Solve,
+    None,
+}
+
+impl From<&QuestionBlock> for DbQuestionBlockKind {
+    fn from(v: &QuestionBlock) -> Self {
+        match v {
+            QuestionBlock::Essay { .. } => DbQuestionBlockKind::Essay,
+            QuestionBlock::Proof { .. } => DbQuestionBlockKind::Proof,
+            QuestionBlock::Solve { .. } => DbQuestionBlockKind::Solve,
+            QuestionBlock::None        => DbQuestionBlockKind::None,
+        }
+    }
+}
+
+// ── elemental_problem_kind ──────────────────────────────────────────────────
+
+/// Maps to the `elemental_problem_kind` PostgreSQL enum.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Type)]
+#[sqlx(type_name = "elemental_problem_kind", rename_all = "snake_case")]
+pub enum DbElementalProblemKind {
+    Question,
+    Block,
+}
+
+impl From<&ElementalProblem> for DbElementalProblemKind {
+    fn from(v: &ElementalProblem) -> Self {
+        match v {
+            ElementalProblem::Question(_) => DbElementalProblemKind::Question,
+            ElementalProblem::Block(_)    => DbElementalProblemKind::Block,
+        }
+    }
 }

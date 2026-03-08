@@ -11,6 +11,7 @@ use crate::{
 pub enum ElementalProblem {
     Question(ElementalQuestion),
     Block(QuestionSeries),
+    Plain(Paragraph)
 }
 
 #[derive(Debug, Clone)]
@@ -33,6 +34,7 @@ impl Renderer<Latex, Problem> for ElementalProblem {
         match self {
             ElementalProblem::Question(q) => <ElementalQuestion as Renderer<Latex, Problem>>::render(q),
             ElementalProblem::Block(b) => <QuestionSeries as Renderer<Latex, Problem>>::render(b),
+            ElementalProblem::Plain(p) => <Paragraph as Renderer<Latex, Universal>>::render(p),
         }
     }
 }
@@ -42,6 +44,7 @@ impl Renderer<Html, Problem> for ElementalProblem {
         match self {
             ElementalProblem::Question(q) => <ElementalQuestion as Renderer<Html, Problem>>::render(q),
             ElementalProblem::Block(b) => <QuestionSeries as Renderer<Html, Problem>>::render(b),
+            ElementalProblem::Plain(p) => <Paragraph as Renderer<Html, Universal>>::render(p),
         }
     }
 }
@@ -51,6 +54,7 @@ impl Renderer<Markdown, Problem> for ElementalProblem {
         match self {
             ElementalProblem::Question(q) => <ElementalQuestion as Renderer<Markdown, Problem>>::render(q),
             ElementalProblem::Block(b) => <QuestionSeries as Renderer<Markdown, Problem>>::render(b),
+            ElementalProblem::Plain(p) => <Paragraph as Renderer<Markdown, Universal>>::render(p),
         }
     }
 }

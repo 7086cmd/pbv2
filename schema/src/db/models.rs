@@ -8,7 +8,8 @@
 use sqlx::FromRow;
 
 use super::types::{
-    DbElementKind, DbFontSize, DbImageFormat, DbImageKind, DbOrderFormat, DbOrderType,
+    DbElementKind, DbElementalProblemKind, DbFontSize, DbImageFormat, DbImageKind,
+    DbOrderFormat, DbOrderType, DbQuestionBlockKind,
 };
 
 // ── texts ─────────────────────────────────────────────────────────────────────
@@ -173,4 +174,128 @@ pub struct DbParagraphElementRow {
     pub position: i32,
     /// FK → `elements.id`.
     pub element_id: i64,
+}
+// ── problem_categories ─────────────────────────────────────────────────────────
+
+/// Row in the `problem_categories` table.
+#[derive(Debug, Clone, FromRow)]
+pub struct DbProblemCategoryRow {
+    pub id: i64,
+    pub cirriculum: i32,
+    pub subject: i32,
+    pub grade: i32,
+    /// Free-form taxonomy tags, e.g. `["Algebra", "Quadratics"]`.
+    pub categories: Vec<String>,
+    /// Optional FK into an external `problem_origin` table.
+    pub origin: Option<i32>,
+}
+
+// ── elemental_questions ─────────────────────────────────────────────────────────
+
+/// Row in the `elemental_questions` table.
+///
+/// Block columns populated per `block_kind`:
+///
+/// | `block_kind` | non-NULL columns   |
+/// |--------------|--------------------|
+/// | `essay`      | `block_lines`      |
+/// | `proof`      | `block_space`      |
+/// | `solve`      | `block_space`      |
+/// | `none`       | (both NULL)        |
+#[derive(Debug, Clone, FromRow)]
+pub struct DbElementalQuestionRow {
+    /// Application-assigned string identifier (e.g. `"q1a"`).
+    pub id: String,
+    /// FK → `paragraphs.id` — question body.
+    pub content_id: i64,
+    /// FK → `paragraphs.id` — optional model answer (hidden in Problem view).
+    pub answer_id: Option<i64>,
+    /// FK → `paragraphs.id` — optional worked solution.
+    pub solution_id: Option<i64>,
+    /// FK → `lists.id` — optional multiple-choice pool.
+    pub choice_pool_id: Option<i64>,
+    pub block_kind: DbQuestionBlockKind,
+    /// `Essay`: number of ruled answer lines.
+    pub block_lines: Option<i32>,
+    /// `Proof` / `Solve`: vertical space in rem.
+    pub block_space: Option<f32>,
+}
+
+// ── question_series ──────────────────────────────────────────────────────────────
+
+/// Row in the `question_series` table.
+#[derive(Debug, Clone, FromRow)]
+pub struct DbQuestionSeriesRow {
+    pub id: i64,
+    /// FK → `paragraphs.id` — lead-in text shown before the sub-questions.
+    pub content_id: i64,
+    pub order_type: DbOrderType,
+    pub order_format: DbOrderFormat,
+    pub order_resume: bool,
+}
+
+/// Row in the `question_series_items` join table.
+///
+/// `position` is 0-based and forms a gapless sequence per `series_id`.
+#[derive(Debug, Clone, FromRow)]
+pub struct DbQuestionSeriesItemRow {
+    pub series_id: i64,
+    pub position: i32,
+    /// FK → `elemental_questions.id`.
+    pub question_id: String,
+}
+
+// ── elemental_problems ─────────────────────────────────────────────────────────────
+
+/// Row in the `elemental_problems` table.
+///
+/// Exactly one FK column is non-NULL, matching `kind`:
+///
+/// | `kind`     | non-NULL column |
+/// |------------|-----------------|
+/// | `question` | `question_id`   |
+/// | `block`    | `series_id`     |
+#[derive(Debug, Clone, FromRow)]
+pub struct DbElementalProblemRow {
+    pub id: i64,
+    pub kind: DbElementalProblemKind,
+    /// FK → `elemental_questions.id` (non-NULL when `kind = 'question'`).
+    pub question_id: Option<String>,
+    /// FK → `question_series.id` (non-NULL when `kind = 'block'`).
+    pub series_id: Option<i64>,
+}
+
+// ── single_problems ─────────────────────────────────────────────────────────────
+
+/// Row in the `single_problems` table.
+#[derive(Debug, Clone, FromRow)]
+pub struct DbSingleProblemRow {
+    pub id: i64,
+    /// FK → `elemental_problems.id`.
+    pub problem_id: i64,
+    /// FK → `problem_categories.id`.
+    pub category_id: i64,
+}
+
+// ── problem_groups ──────────────────────────────────────────────────────────────
+
+/// Row in the `problem_groups` table.
+#[derive(Debug, Clone, FromRow)]
+pub struct DbProblemGroupRow {
+    pub id: i64,
+    /// FK → `paragraphs.id` — shared reading material for all sub-problems.
+    pub material_id: i64,
+    /// FK → `problem_categories.id`.
+    pub category_id: i64,
+}
+
+/// Row in the `problem_group_items` join table.
+///
+/// `position` is 0-based and forms a gapless sequence per `group_id`.
+#[derive(Debug, Clone, FromRow)]
+pub struct DbProblemGroupItemRow {
+    pub group_id: i64,
+    pub position: i32,
+    /// FK → `elemental_problems.id`.
+    pub problem_id: i64,
 }
