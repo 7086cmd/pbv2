@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { renderProblemGroup } from '../api'
+import { ref, onMounted } from "vue";
+import { renderProblemGroup } from "../api";
 
-const html = ref('')
-const error = ref('')
+const html = ref("");
+const error = ref("");
 
 onMounted(async () => {
   try {
-    html.value = await renderProblemGroup()
+    html.value = await renderProblemGroup();
   } catch (e) {
-    error.value = String(e)
+    error.value = String(e);
   }
-})
+});
 </script>
 
 <template>

@@ -205,5 +205,88 @@ def import_doc(
         click.echo(f"Imported {len(sp_ids)} problem(s).")
 
 
+@cli.command("list-categories")
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    default=False,
+    help="Output raw JSON instead of a formatted table.",
+)
+def list_categories(as_json: bool) -> None:
+    """List all problem categories with subject, grade, and problem counts."""
+    import json
+    import os
+
+    from sqlalchemy import create_engine, text
+
+    db_url = os.environ.get("DATABASE_URL")
+    if not db_url:
+        raise click.UsageError("DATABASE_URL is not set.")
+
+    engine = create_engine(db_url)
+    query = text("""
+        SELECT
+            pc.id,
+            COALESCE(cu.name, '')           AS curriculum,
+            COALESCE(su.name, '')           AS subject,
+            COALESCE(su.category::text, '') AS subject_type,
+            pc.grade,
+            pc.categories                   AS tags,
+            COUNT(sp.id)                    AS problems
+        FROM  problem_categories pc
+        LEFT  JOIN curriculums    cu ON cu.id = pc.cirriculum
+        LEFT  JOIN subjects       su ON su.id = pc.subject
+        LEFT  JOIN single_problems sp ON sp.category_id = pc.id
+        GROUP BY pc.id, cu.name, su.name, su.category
+        ORDER BY cu.name, su.category, pc.grade, su.name
+    """)
+
+    with engine.connect() as conn:
+        rows = conn.execute(query).mappings().all()
+
+    if as_json:
+        click.echo(json.dumps([dict(r) for r in rows], ensure_ascii=False, indent=2))
+        return
+
+    if not rows:
+        click.echo("No categories found.")
+        return
+
+    # Column widths
+    id_w   = max(2, max(len(str(r["id"])) for r in rows))
+    cur_w  = max(10, max(len(r["curriculum"]) for r in rows))
+    sub_w  = max(7, max(len(r["subject"]) for r in rows))
+    type_w = max(4, max(len(r["subject_type"]) for r in rows))
+    tags_w = max(4, max(len(", ".join(r["tags"]) if r["tags"] else "—") for r in rows))
+
+    def col(v: str, w: int) -> str:
+        return v.ljust(w)
+
+    header = (
+        f"{'ID'.rjust(id_w)}  "
+        f"{col('Curriculum', cur_w)}  "
+        f"{col('Subject', sub_w)}  "
+        f"{col('Type', type_w)}  "
+        f"{'Grade'.rjust(5)}  "
+        f"{col('Tags', tags_w)}  "
+        f"{'# Problems'.rjust(10)}"
+    )
+    sep = "-" * len(header)
+    click.echo(header)
+    click.echo(sep)
+    for r in rows:
+        tags = ", ".join(r["tags"]) if r["tags"] else "—"
+        click.echo(
+            f"{str(r['id']).rjust(id_w)}  "
+            f"{col(r['curriculum'], cur_w)}  "
+            f"{col(r['subject'], sub_w)}  "
+            f"{col(r['subject_type'], type_w)}  "
+            f"{str(r['grade']).rjust(5)}  "
+            f"{col(tags, tags_w)}  "
+            f"{str(r['problems']).rjust(10)}"
+        )
+
+
 if __name__ == "__main__":
     cli()

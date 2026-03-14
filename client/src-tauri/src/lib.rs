@@ -16,6 +16,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::render_problem_group,
             commands::render_single_problem,
+            commands::list_categories,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ProblemGroupView, QuestionView } from '@/shared'
+import { CategoriesView, ProblemGroupView, QuestionView } from "@/shared";
 </script>
 
 <template>
@@ -7,6 +7,10 @@ import { ProblemGroupView, QuestionView } from '@/shared'
     <header>
       <h1>PBv2</h1>
     </header>
+    <section>
+      <h2>Categories</h2>
+      <CategoriesView />
+    </section>
     <section>
       <h2>Problem Group</h2>
       <ProblemGroupView />
