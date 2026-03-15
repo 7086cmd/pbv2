@@ -1,5 +1,5 @@
 use crate::{
-    ElementalQuestion, Paragraph, QuestionSeries,
+    ElementalQuestion, Paragraph,
     schema::{
         problems::ProblemCategory,
         renderer::{Html, Latex, Markdown, Problem, Renderer, Universal},
@@ -7,56 +7,16 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-/// Problem instance, can be a unary question or containing a vector of self.
-pub enum ElementalProblem {
-    Question(ElementalQuestion),
-    Block(QuestionSeries),
-    Plain(Paragraph)
-}
-
-#[derive(Debug, Clone)]
 pub struct SingleProblem {
-    pub problem: ElementalProblem,
+    pub problem: ElementalQuestion,
     pub category: ProblemCategory,
 }
 
 #[derive(Debug, Clone)]
 pub struct ProblemGroup {
     pub material: Paragraph,
-    pub problems: Vec<ElementalProblem>,
+    pub problems: Vec<ElementalQuestion>,
     pub category: ProblemCategory,
-}
-
-// ── ElementalProblem ──────────────────────────────────────────────────────────
-
-impl Renderer<Latex, Problem> for ElementalProblem {
-    fn render(&self) -> anyhow::Result<String> {
-        match self {
-            ElementalProblem::Question(q) => <ElementalQuestion as Renderer<Latex, Problem>>::render(q),
-            ElementalProblem::Block(b) => <QuestionSeries as Renderer<Latex, Problem>>::render(b),
-            ElementalProblem::Plain(p) => <Paragraph as Renderer<Latex, Universal>>::render(p),
-        }
-    }
-}
-
-impl Renderer<Html, Problem> for ElementalProblem {
-    fn render(&self) -> anyhow::Result<String> {
-        match self {
-            ElementalProblem::Question(q) => <ElementalQuestion as Renderer<Html, Problem>>::render(q),
-            ElementalProblem::Block(b) => <QuestionSeries as Renderer<Html, Problem>>::render(b),
-            ElementalProblem::Plain(p) => <Paragraph as Renderer<Html, Universal>>::render(p),
-        }
-    }
-}
-
-impl Renderer<Markdown, Problem> for ElementalProblem {
-    fn render(&self) -> anyhow::Result<String> {
-        match self {
-            ElementalProblem::Question(q) => <ElementalQuestion as Renderer<Markdown, Problem>>::render(q),
-            ElementalProblem::Block(b) => <QuestionSeries as Renderer<Markdown, Problem>>::render(b),
-            ElementalProblem::Plain(p) => <Paragraph as Renderer<Markdown, Universal>>::render(p),
-        }
-    }
 }
 
 // ── SingleProblem ─────────────────────────────────────────────────────────────
@@ -66,19 +26,19 @@ impl Renderer<Markdown, Problem> for ElementalProblem {
 
 impl Renderer<Latex, Problem> for SingleProblem {
     fn render(&self) -> anyhow::Result<String> {
-        <ElementalProblem as Renderer<Latex, Problem>>::render(&self.problem)
+        <ElementalQuestion as Renderer<Latex, Problem>>::render(&self.problem)
     }
 }
 
 impl Renderer<Html, Problem> for SingleProblem {
     fn render(&self) -> anyhow::Result<String> {
-        <ElementalProblem as Renderer<Html, Problem>>::render(&self.problem)
+        <ElementalQuestion as Renderer<Html, Problem>>::render(&self.problem)
     }
 }
 
 impl Renderer<Markdown, Problem> for SingleProblem {
     fn render(&self) -> anyhow::Result<String> {
-        <ElementalProblem as Renderer<Markdown, Problem>>::render(&self.problem)
+        <ElementalQuestion as Renderer<Markdown, Problem>>::render(&self.problem)
     }
 }
 
@@ -93,7 +53,7 @@ impl Renderer<Latex, Problem> for ProblemGroup {
     ///
     /// Layout:
     /// 1. Material paragraph inside `\begin{mdframed} … \end{mdframed}`.
-    /// 2. Each [`ElementalProblem`] rendered in sequence.
+    /// 2. Each [`ElementalQuestion`] rendered in sequence.
     fn render(&self) -> anyhow::Result<String> {
         let mut out = String::new();
 
@@ -101,7 +61,7 @@ impl Renderer<Latex, Problem> for ProblemGroup {
         out.push_str(&format!("\\begin{{mdframed}}\n{}\n\\end{{mdframed}}\n", material.trim()));
 
         for problem in &self.problems {
-            out.push_str(&<ElementalProblem as Renderer<Latex, Problem>>::render(problem)?);
+            out.push_str(&<ElementalQuestion as Renderer<Latex, Problem>>::render(problem)?);
             out.push('\n');
         }
 
@@ -124,7 +84,7 @@ impl Renderer<Html, Problem> for ProblemGroup {
         out.push_str(&format!("<blockquote class=\"material\">{}\n</blockquote>\n", material));
 
         for problem in &self.problems {
-            out.push_str(&<ElementalProblem as Renderer<Html, Problem>>::render(problem)?);
+            out.push_str(&<ElementalQuestion as Renderer<Html, Problem>>::render(problem)?);
             out.push('\n');
         }
 
@@ -148,7 +108,7 @@ impl Renderer<Markdown, Problem> for ProblemGroup {
         out.push('\n');
 
         for problem in &self.problems {
-            out.push_str(&<ElementalProblem as Renderer<Markdown, Problem>>::render(problem)?);
+            out.push_str(&<ElementalQuestion as Renderer<Markdown, Problem>>::render(problem)?);
             out.push('\n');
         }
 
@@ -162,7 +122,7 @@ impl Renderer<Markdown, Problem> for ProblemGroup {
 mod tests {
     use super::*;
     use crate::{
-        Element, OrderFormat, OrderType, QuestionBlock, Text,
+        Element, List, OrderFormat, OrderType, QuestionBlock, Text,
         schema::renderer::{Html, Latex, Markdown, Problem, Renderer},
     };
 
@@ -191,41 +151,43 @@ mod tests {
         }
     }
 
-    fn q_problem(id: &str, text: &str) -> ElementalProblem {
-        ElementalProblem::Question(simple_question(id, text))
+    fn q_problem(id: &str, text: &str) -> ElementalQuestion {
+        simple_question(id, text)
     }
 
-    fn block_problem() -> ElementalProblem {
-        ElementalProblem::Block(QuestionSeries {
+    fn subquestion_problem() -> ElementalQuestion {
+        ElementalQuestion {
+            id: "q_sub".to_owned(),
             content: para("Answer all."),
-            questions: vec![
-                simple_question("a", "Part A"),
-                simple_question("b", "Part B"),
-            ],
-            order_type: OrderType::LowercaseAlphabetic,
-            order_format: OrderFormat::Parenthesis,
-            order_resume: false,
-        })
+            answer: None,
+            solution: None,
+            choice_pool: Some(List {
+                items: vec![para("Part A"), para("Part B")],
+                order_type: OrderType::LowercaseAlphabetic,
+                order_format: OrderFormat::Parenthesis,
+            }),
+            block_type: QuestionBlock::None,
+        }
     }
 
-    // ── ElementalProblem ───────────────────────────────────────────────────────
+    // ── ElementalQuestion ──────────────────────────────────────────────────────
 
     #[test]
     fn elemental_question_latex() {
-        let s = <ElementalProblem as Renderer<Latex, Problem>>::render(&q_problem("q1", "Define osmosis.")).unwrap();
+        let s = <ElementalQuestion as Renderer<Latex, Problem>>::render(&q_problem("q1", "Define osmosis.")).unwrap();
         assert!(s.contains("osmosis"));
     }
 
     #[test]
-    fn elemental_block_html() {
-        let s = <ElementalProblem as Renderer<Html, Problem>>::render(&block_problem()).unwrap();
+    fn elemental_subquestion_html() {
+        let s = <ElementalQuestion as Renderer<Html, Problem>>::render(&subquestion_problem()).unwrap();
         assert!(s.contains("<ol"));
         assert!(s.contains("Part A"));
     }
 
     #[test]
-    fn elemental_block_markdown() {
-        let s = <ElementalProblem as Renderer<Markdown, Problem>>::render(&block_problem()).unwrap();
+    fn elemental_subquestion_markdown() {
+        let s = <ElementalQuestion as Renderer<Markdown, Problem>>::render(&subquestion_problem()).unwrap();
         assert!(s.contains("Part B"));
     }
 

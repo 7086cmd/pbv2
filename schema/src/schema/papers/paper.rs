@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
 use crate::{
-    DocumentClass, ElementalProblem, LatexBuilder,
+    DocumentClass, ElementalQuestion, LatexBuilder,
     schema::{
         papers::cirriculum::{Cirriculum, Subject},
         renderer::{Html, Latex, Markdown, Problem, Renderer},
@@ -22,7 +22,7 @@ pub struct Paper {
     /// The year the paper was administered, if applicable. For mock papers, this field may be null.
     pub year: Option<i32>,
 
-    pub content: Vec<ElementalProblem>
+    pub content: Vec<ElementalQuestion>
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -63,7 +63,7 @@ impl Renderer<Latex, Problem> for Paper {
     /// 1. Title: `\name (\abbreviation) – \year` (year omitted when `None`).
     /// 2. Instructions section (`\section*{Instructions}`) listing each
     ///    non-empty [`Instruction`] variant as a description-list entry.
-    /// 3. Problems (`\section*{Problems}`) with each [`ElementalProblem`]
+    /// 3. Problems (`\section*{Problems}`) with each [`ElementalQuestion`]
     ///    rendered in sequence and separated by `\bigskip`.
     fn render(&self) -> anyhow::Result<String> {
         let mut builder = LatexBuilder::new(DocumentClass::Article { toc: false });
@@ -119,7 +119,7 @@ impl Renderer<Latex, Problem> for Paper {
         // ── problems ───────────────────────────────────────────────────────
         builder.add_content("\\section*{Problems}".to_string());
         for (i, problem) in self.content.iter().enumerate() {
-            let rendered = <ElementalProblem as Renderer<Latex, Problem>>::render(problem)?;
+            let rendered = <ElementalQuestion as Renderer<Latex, Problem>>::render(problem)?;
             if i > 0 {
                 builder.add_content("\\bigskip".to_string());
             }
@@ -203,7 +203,7 @@ impl Renderer<Html, Problem> for Paper {
         // ── problems ───────────────────────────────────────────────────────
         out.push_str("<section class=\"problems\">\n<h2>Problems</h2>\n");
         for (i, problem) in self.content.iter().enumerate() {
-            let rendered = <ElementalProblem as Renderer<Html, Problem>>::render(problem)?;
+            let rendered = <ElementalQuestion as Renderer<Html, Problem>>::render(problem)?;
             out.push_str(&format!(
                 "<div class=\"problem\" data-index=\"{}\">\n{}\n</div>\n",
                 i + 1,
@@ -273,7 +273,7 @@ impl Renderer<Markdown, Problem> for Paper {
         // ── problems ───────────────────────────────────────────────────────
         out.push_str("## Problems\n\n");
         for (i, problem) in self.content.iter().enumerate() {
-            let rendered = <ElementalProblem as Renderer<Markdown, Problem>>::render(problem)?;
+            let rendered = <ElementalQuestion as Renderer<Markdown, Problem>>::render(problem)?;
             out.push_str(&format!("**{}.**\n\n{}\n\n", i + 1, rendered.trim()));
         }
 

@@ -1,0 +1,103 @@
+syntax = "proto3";
+
+package pbv2;
+
+// ── Primitive content ──────────────────────────────────────────────────────────
+//
+// A Content block is a flat sequence of TextRuns.  Each run is either plain
+// text or an inline LaTeX formula (is_formula=true).  The store layer encodes
+// this into the binary ``formatting`` + ``content`` representation used by the
+// ``texts`` table.
+
+message TextRun {
+    string text       = 1;
+    bool   is_formula = 2;
+    bool   bold       = 3;
+    bool   italic     = 4;
+}
+
+message Content {
+    repeated TextRun runs = 1;
+}
+
+// ── Answer-space block ────────────────────────────────────────────────────────
+
+enum BlockKind {
+    BLOCK_NONE  = 0;
+    BLOCK_ESSAY = 1;
+    BLOCK_PROOF = 2;
+    BLOCK_SOLVE = 3;
+}
+
+message QuestionBlock {
+    BlockKind     kind  = 1;
+    optional int32 lines = 2;   // essay  – number of ruled answer lines
+    optional float space = 3;   // proof / solve – vertical space in rem
+}
+
+// ── Sub-question ──────────────────────────────────────────────────────────────
+//
+// A labelled part of a multi-part question, e.g. "(a) …", "(b) …".
+// Sub-questions are stored as List elements inside the parent question's
+// content paragraph — they are not separate DB entities.
+
+message SubQuestion {
+    Content content = 1;
+}
+
+// ── Extracted question ────────────────────────────────────────────────────────
+
+message ExtractedQuestion {
+    // Matches the printed top-level question number, e.g. "1", "15".
+    string id = 1;
+
+    // The question stem / shared stimulus.
+    Content content = 2;
+
+    // Labelled sub-parts.  Non-empty ⇒ content is the shared intro stimulus.
+    repeated SubQuestion sub_questions = 3;
+
+    // Optional printed answer / worked solution.
+    optional Content answer   = 4;
+    optional Content solution = 5;
+
+    // MCQ options in order; empty for non-MCQ questions.
+    repeated Content choices = 6;
+
+    QuestionBlock block = 7;
+}
+
+// ── Problem category ──────────────────────────────────────────────────────────
+
+message ProblemCategory {
+    int32            curriculum_id = 1;
+    int32            subject_id    = 2;
+    int32            grade         = 3;
+    repeated string  tags          = 4;
+}
+
+// ── Import transport ──────────────────────────────────────────────────────────
+//
+// The importer publishes ImportBatch messages on the Zenoh key
+// ``pbv2/import/problems``.  The backend subscribes, persists each question,
+// and replies with ImportAck on ``pbv2/import/ack``.
+
+message ImportRequest {
+    ExtractedQuestion question    = 1;
+    int64             category_id = 2;
+    // Prefix applied to question.id before DB insertion to avoid collisions.
+    string            id_prefix   = 3;
+}
+
+message ImportBatch {
+    repeated ImportRequest items  = 1;
+    // Human-readable origin, e.g. "hw01.pdf" or "2024-bio-p1.docx".
+    string                 source = 2;
+}
+
+message ImportAck {
+    // single_problems.id values created; one per item in the batch.
+    repeated int64 single_problem_ids = 1;
+    // Non-empty on failure; empty string means success.
+    string         error              = 2;
+}

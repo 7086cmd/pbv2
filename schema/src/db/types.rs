@@ -8,7 +8,7 @@
 use sqlx::Type;
 
 use crate::schema::elements::{FontSize, ImageFormat, OrderFormat, OrderType};
-use crate::schema::problems::{QuestionBlock, ElementalProblem};
+use crate::schema::problems::QuestionBlock;
 
 // ── font_size ─────────────────────────────────────────────────────────────────
 
@@ -213,16 +213,4 @@ impl From<&QuestionBlock> for DbQuestionBlockKind {
 #[sqlx(type_name = "elemental_problem_kind", rename_all = "snake_case")]
 pub enum DbElementalProblemKind {
     Question,
-    Block,
-    Plain
-}
-
-impl From<&ElementalProblem> for DbElementalProblemKind {
-    fn from(v: &ElementalProblem) -> Self {
-        match v {
-            ElementalProblem::Question(_) => DbElementalProblemKind::Question,
-            ElementalProblem::Block(_)    => DbElementalProblemKind::Block,
-            ElementalProblem::Plain(_)    => DbElementalProblemKind::Plain,
-        }
-    }
 }

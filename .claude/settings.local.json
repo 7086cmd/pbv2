@@ -1,0 +1,5 @@
+{
+  "permissions": {
+    "allow": ["Bash(psql:*)", "Bash(python:*)", "Bash(cargo build:*)", "Bash(cd:*)"]
+  }
+}

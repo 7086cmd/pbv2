@@ -22,3 +22,16 @@ export interface CategoryItem {
 export function listCategories(): Promise<CategoryItem[]> {
   return invoke<CategoryItem[]>("list_categories");
 }
+
+export interface ProblemListItem {
+  id: number;
+  preview: string;
+}
+
+export function listProblems(categoryId: number): Promise<ProblemListItem[]> {
+  return invoke<ProblemListItem[]>("list_problems", { categoryId });
+}
+
+export function renderDbProblem(id: number): Promise<string> {
+  return invoke<string>("render_db_problem", { id });
+}

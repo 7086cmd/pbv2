@@ -60,8 +60,8 @@ The central Rust library shared by the Tauri backend. Key abstractions:
 
 - **`Element` / `Paragraph`** – building blocks for rich content (text runs with formatting, images, tables, lists, LaTeX blanks, SI units, chemistry, code listings).
 - **`ElementalQuestion`** – an atomic question with optional answer, solution, choice pool, and an answer-block type (`Essay`, `Solve`, `Proof`, `None`).
-- **`ElementalProblem`** – either a single `Question` or a `QuestionSeries` (shared intro + sub-questions).
-- **`SingleProblem`** / **`ProblemGroup`** – top-level problem wrappers that carry a `ProblemCategory` (curriculum, subject, grade, topic tags).
+- **`ElementalQuestion`** – atomic question unit; sub-questions are represented using `List` content directly.
+- **`SingleProblem`** / **`ProblemGroup`** – top-level problem wrappers that carry a `ProblemCategory` (curriculum, subject, grade, topic tags), containing `ElementalQuestion` entries.
 - **`Renderer<T: RenderTarget, E: RenderEnvironment>`** – generic render trait. Targets: `Html`, `Latex`, `Markdown`. Environments: `Problem`, `Solution`, `Universal`. Implementing `Renderer<T, Universal>` automatically gives `Problem` and `Solution` impls.
 - **`db/`** – `sqlx`-based row structs (`Db*Row`) for every PostgreSQL table, used for reading back stored data.
 
@@ -89,7 +89,7 @@ The LLM returns `ExtractedPage` (Pydantic, defined in `schema.py`), which `store
 
 ### Database
 
-PostgreSQL. Migrations are in `migrations/` (plain SQL, numbered `0001`–`0004`). The schema stores content as normalized rows: `texts`, `images`, `paragraphs`, `elements` (discriminated union via `kind` column), `elemental_questions`, `question_series`, `elemental_problems`, `single_problems`, `problem_groups`, `problem_categories`.
+PostgreSQL. Migrations are in `migrations/` (plain SQL, numbered `0001`–`0005`). The schema stores content as normalized rows: `texts`, `images`, `paragraphs`, `elements` (discriminated union via `kind` column), `elemental_questions`, `elemental_problems`, `single_problems`, `problem_groups`, `problem_categories`.
 
 ### Importer environment variables
 

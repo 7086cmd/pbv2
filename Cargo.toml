@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 
-members = ["client/src-tauri", "schema"]
+members = ["client/src-tauri", "schema", "proto"]
 
 [workspace.package]
 edition = "2024"

@@ -6,7 +6,7 @@ mod schema;
 pub use engines::{BuiltinEngine, Engine, XeLaTeX};
 pub use latex::{DocumentClass, LatexBuilder};
 
-pub use schema::problems::{ElementalQuestion, ElementalProblem, ProblemCategory, ProblemGroup, QuestionBlock, QuestionSeries, SingleProblem};
+pub use schema::problems::{ElementalQuestion, ProblemCategory, ProblemGroup, QuestionBlock, SingleProblem};
 pub use schema::{
     elements::{
         BinaryImage, Blank, BlankAnswer, Cell, CodeListing, CompiledGraph, CompoundUnit, Element,

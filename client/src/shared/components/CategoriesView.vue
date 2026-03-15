@@ -2,6 +2,14 @@
 import { ref, onMounted } from "vue";
 import { listCategories, type CategoryItem } from "../api";
 
+const props = defineProps<{
+  selectedId?: number | null;
+}>();
+
+const emit = defineEmits<{
+  (e: "select", id: number): void;
+}>();
+
 const categories = ref<CategoryItem[]>([]);
 const error = ref("");
 const loading = ref(true);
@@ -33,18 +41,20 @@ onMounted(async () => {
     <table v-else class="cat-table">
       <thead>
         <tr>
-          <th>ID</th>
           <th>Curriculum</th>
           <th>Subject</th>
           <th>Type</th>
           <th>Grade</th>
-          <th>Tags</th>
           <th class="num">Problems</th>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="row in categories" :key="row.id">
-          <td class="num muted">{{ row.id }}</td>
+        <tr
+          v-for="row in categories"
+          :key="row.id"
+          :class="{ selected: row.id === selectedId }"
+          @click="emit('select', row.id)"
+        >
           <td>{{ row.curriculum_name || "—" }}</td>
           <td>{{ row.subject_name || "—" }}</td>
           <td>
@@ -53,10 +63,6 @@ onMounted(async () => {
             </span>
           </td>
           <td class="num">{{ row.grade }}</td>
-          <td>
-            <span v-for="tag in row.categories" :key="tag" class="tag">{{ tag }}</span>
-            <span v-if="row.categories.length === 0" class="muted">—</span>
-          </td>
           <td class="num">{{ row.problem_count }}</td>
         </tr>
       </tbody>
@@ -67,30 +73,31 @@ onMounted(async () => {
 <style scoped>
 .categories-wrap {
   overflow-x: auto;
+  overflow-y: auto;
 }
 
 .pb-state {
   color: #888;
-  font-size: 0.9rem;
-  padding: 0.5rem 0;
+  font-size: 0.85rem;
+  padding: 0.75rem;
 }
 
 .pb-error {
   color: #c0392b;
-  font-size: 0.9rem;
-  padding: 0.5rem 0;
+  font-size: 0.85rem;
+  padding: 0.75rem;
 }
 
 .cat-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
+  font-size: 0.82rem;
 }
 
 .cat-table th,
 .cat-table td {
   text-align: left;
-  padding: 0.45rem 0.75rem;
+  padding: 0.4rem 0.6rem;
   border-bottom: 1px solid #eee;
   white-space: nowrap;
 }
@@ -103,23 +110,33 @@ onMounted(async () => {
   top: 0;
 }
 
+.cat-table tbody tr {
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
 .cat-table tbody tr:hover {
-  background: #f5f7ff;
+  background: #f0f4ff;
+}
+
+.cat-table tbody tr.selected {
+  background: #dce7ff;
+  color: #1a3e8c;
+}
+
+.cat-table tbody tr.selected td {
+  font-weight: 500;
 }
 
 .num {
   text-align: right;
 }
 
-.muted {
-  color: #aaa;
-}
-
 .badge {
   display: inline-block;
-  padding: 0.15rem 0.55rem;
+  padding: 0.12rem 0.45rem;
   border-radius: 9999px;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 500;
   background: #e8eaf6;
   color: #3949ab;
@@ -144,15 +161,5 @@ onMounted(async () => {
 .badge--other {
   background: #f1f8e9;
   color: #33691e;
-}
-
-.tag {
-  display: inline-block;
-  margin: 0.1rem 0.2rem 0.1rem 0;
-  padding: 0.1rem 0.45rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  background: #eee;
-  color: #444;
 }
 </style>

@@ -221,48 +221,17 @@ pub struct DbElementalQuestionRow {
     pub block_space: Option<f32>,
 }
 
-// ── question_series ──────────────────────────────────────────────────────────────
-
-/// Row in the `question_series` table.
-#[derive(Debug, Clone, FromRow)]
-pub struct DbQuestionSeriesRow {
-    pub id: i64,
-    /// FK → `paragraphs.id` — lead-in text shown before the sub-questions.
-    pub content_id: i64,
-    pub order_type: DbOrderType,
-    pub order_format: DbOrderFormat,
-    pub order_resume: bool,
-}
-
-/// Row in the `question_series_items` join table.
-///
-/// `position` is 0-based and forms a gapless sequence per `series_id`.
-#[derive(Debug, Clone, FromRow)]
-pub struct DbQuestionSeriesItemRow {
-    pub series_id: i64,
-    pub position: i32,
-    /// FK → `elemental_questions.id`.
-    pub question_id: String,
-}
-
 // ── elemental_problems ─────────────────────────────────────────────────────────────
 
 /// Row in the `elemental_problems` table.
 ///
-/// Exactly one FK column is non-NULL, matching `kind`:
-///
-/// | `kind`     | non-NULL column |
-/// |------------|-----------------|
-/// | `question` | `question_id`   |
-/// | `block`    | `series_id`     |
+/// `kind` is always `'question'`; `question_id` is always non-NULL.
 #[derive(Debug, Clone, FromRow)]
 pub struct DbElementalProblemRow {
     pub id: i64,
     pub kind: DbElementalProblemKind,
-    /// FK → `elemental_questions.id` (non-NULL when `kind = 'question'`).
+    /// FK → `elemental_questions.id`.
     pub question_id: Option<String>,
-    /// FK → `question_series.id` (non-NULL when `kind = 'block'`).
-    pub series_id: Option<i64>,
 }
 
 // ── single_problems ─────────────────────────────────────────────────────────────

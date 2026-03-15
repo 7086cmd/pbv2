@@ -150,6 +150,16 @@ impl OrderFormat {
             OrderFormat::None => counter.to_owned(),
         }
     }
+
+    /// Wrap a computed counter string (e.g. `"A"`) for HTML label display.
+    pub(crate) fn wrap_html(&self, counter: &str) -> String {
+        match self {
+            OrderFormat::Period => format!("{}.", counter),
+            OrderFormat::Parenthesis => format!("({})", counter),
+            OrderFormat::RightParenthesis => format!("{})", counter),
+            OrderFormat::None => counter.to_owned(),
+        }
+    }
 }
 
 // ── LaTeX ─────────────────────────────────────────────────────────────────────
@@ -201,17 +211,10 @@ impl Renderer<Html, Universal> for List {
     /// Render the list as an HTML `<ul>` or `<ol>` element.
     ///
     /// - `Unordered` → `<ul>`
-    /// - Ordered types → `<ol type="…">` where `type` follows the HTML spec
-    ///   (`1`, `a`, `A`, `i`, `I`).
-    /// - [`OrderFormat`] variants other than `Period` are expressed via an
-    ///   inline `list-style-type` CSS counter on the `<ol>` element:
-    ///
-    /// | Format           | CSS `list-style-type`          |
-    /// |------------------|-------------------------------|
-    /// | Period           | *(browser default)*            |
-    /// | RightParenthesis | `"\2e "` replaced by `"\\29 "` |
-    /// | Parenthesis      | counters with open+close paren |
-    /// | None             | `none` + `padding-left:0`      |
+    /// - `Period` ordered → `<ol type="…">` (browser default marker handles punctuation)
+    /// - All other ordered formats → `<ol style="list-style:none;padding-left:0">` with
+    ///   an explicit `<span class="list-label">` prepended to each item, so the label
+    ///   (e.g. `(A)`, `B)`) is rendered reliably across all browsers.
     fn render(&self) -> anyhow::Result<String> {
         let mut out = String::new();
 
@@ -225,37 +228,26 @@ impl Renderer<Html, Universal> for List {
         } else {
             let type_attr = self.order_type.html_type().unwrap();
 
-            // CSS override for non-Period formats.
-            let style_attr = match self.order_format {
-                OrderFormat::Period => String::new(),
-                OrderFormat::RightParenthesis => {
-                    format!(" style=\"list-style-type: '\\29 '\"")
+            if self.order_format == OrderFormat::Period {
+                // Browser default marker handles "A." / "1." correctly.
+                out.push_str(&format!("<ol type=\"{type_attr}\">\n"));
+                for item in &self.items {
+                    let text = <Paragraph as Renderer<Html, Universal>>::render(item)?;
+                    out.push_str(&format!("  <li>{}</li>\n", text));
                 }
-                OrderFormat::Parenthesis => {
-                    // No single `type` value covers this; use a CSS counter.
-                    format!(
-                        " style=\"list-style-type: '(' counter(list-item, {type_attr}) ')'\"",
-                        type_attr = match self.order_type.html_type().unwrap() {
-                            "1" => "decimal",
-                            "a" => "lower-alpha",
-                            "A" => "upper-alpha",
-                            "i" => "lower-roman",
-                            "I" => "upper-roman",
-                            other => other,
-                        }
-                    )
+                out.push_str("</ol>");
+            } else {
+                // Suppress browser marker; emit explicit label spans per item.
+                out.push_str("<ol style=\"list-style:none;padding-left:0\">\n");
+                for (i, item) in self.items.iter().enumerate() {
+                    let text = <Paragraph as Renderer<Html, Universal>>::render(item)?;
+                    let label = self.order_format.wrap_html(&self.order_type.process(i + 1));
+                    out.push_str(&format!(
+                        "  <li><span class=\"list-label\">{label}</span>{text}</li>\n"
+                    ));
                 }
-                OrderFormat::None => {
-                    format!(" style=\"list-style-type:none;padding-left:0\"")
-                }
-            };
-
-            out.push_str(&format!("<ol type=\"{type_attr}\"{style_attr}>\n"));
-            for item in &self.items {
-                let text = <Paragraph as Renderer<Html, Universal>>::render(item)?;
-                out.push_str(&format!("  <li>{}</li>\n", text));
+                out.push_str("</ol>");
             }
-            out.push_str("</ol>");
         }
 
         Ok(out)
@@ -450,15 +442,15 @@ mod tests {
     fn html_decimal_right_parenthesis() {
         let l = ordered(&["x"], OrderType::Decimal, OrderFormat::RightParenthesis);
         let out = <List as Renderer<Html, Universal>>::render(&l).unwrap();
-        assert!(out.contains(r#"type="1""#));
-        assert!(out.contains("style="));
+        assert!(out.contains("list-style:none"));
+        assert!(out.contains(r#"class="list-label">1)</span>"#));
     }
 
     #[test]
     fn html_decimal_none() {
         let l = ordered(&["x"], OrderType::Decimal, OrderFormat::None);
         let out = <List as Renderer<Html, Universal>>::render(&l).unwrap();
-        assert!(out.contains("list-style-type:none"));
+        assert!(out.contains("list-style:none"));
     }
 
     #[test]
