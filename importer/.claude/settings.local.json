@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/ethangoh/Developer/pbv2/**)",
+      "Read(//Users/ethangoh/Developer/pbv2/client/**)",
+      "Bash(cd:*)"
+    ]
+  }
+}

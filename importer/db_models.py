@@ -7,7 +7,6 @@ Tables covered
                                  lists, list_items, paragraphs, elements,
                                  paragraph_elements
   migrations/0002_problems.sql: problem_categories, elemental_questions,
-                                 question_series, question_series_items,
                                  elemental_problems, single_problems,
                                  problem_groups, problem_group_items
   migrations/0003_meta.sql    : curriculums, subjects, problem_origins
@@ -100,8 +99,6 @@ class QuestionBlockKindEnum(str, enum.Enum):
 
 class ElementalProblemKindEnum(str, enum.Enum):
     question = "question"
-    block = "block"
-    plain = "plain"
 
 
 class SubjectCategoryEnum(str, enum.Enum):
@@ -336,38 +333,8 @@ class ElementalQuestion(Base):
     block_space = Column(REAL)
 
 
-class QuestionSeries(Base):
-    """Row in the ``question_series`` table."""
-
-    __tablename__ = "question_series"
-
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    content_id = Column(BigInteger, ForeignKey("paragraphs.id"), nullable=False)
-    order_type = Column(Enum(OrderTypeEnum, name="order_type"), nullable=False)
-    order_format = Column(Enum(OrderFormatEnum, name="order_format"), nullable=False)
-    order_resume = Column(Boolean, nullable=False, default=False)
-
-
-class QuestionSeriesItem(Base):
-    """Row in the ``question_series_items`` table."""
-
-    __tablename__ = "question_series_items"
-
-    series_id = Column(
-        BigInteger,
-        ForeignKey("question_series.id", ondelete="CASCADE"),
-        primary_key=True,
-    )
-    position = Column(Integer, primary_key=True)
-    question_id = Column(Text, ForeignKey("elemental_questions.id"), nullable=False)
-
-
 class ElementalProblem(Base):
-    """
-    Row in the ``elemental_problems`` table (discriminated union).
-
-    paragraph_id column added by migration 0003 for the ``plain`` variant.
-    """
+    """Row in the ``elemental_problems`` table."""
 
     __tablename__ = "elemental_problems"
 
@@ -377,8 +344,6 @@ class ElementalProblem(Base):
         nullable=False,
     )
     question_id = Column(Text, ForeignKey("elemental_questions.id"))
-    series_id = Column(BigInteger, ForeignKey("question_series.id"))
-    paragraph_id = Column(BigInteger, ForeignKey("paragraphs.id"))  # plain variant
 
 
 class SingleProblem(Base):

@@ -3,6 +3,14 @@ Pydantic models representing the LLM-extracted structure of a single exam page.
 
 These map to the DB schema (defined in db_models.py) and are the contract
 between the LLM and the storage layer.
+
+Schema conventions
+──────────────────
+Every problem is an ElementalQuestion.  Sub-questions (e.g. "(a) … (b) …")
+are expressed as ``sub_questions``: a flat ordered list of Content items that
+the store layer writes as a single List element appended to the content
+paragraph.  There is no separate "series" wrapper; the introductory stem lives
+in ``content`` and the numbered parts live in ``sub_questions``.
 """
 
 from __future__ import annotations
@@ -40,16 +48,44 @@ class Content(BaseModel):
         return "".join(parts)
 
 
-# ── Questions ─────────────────────────────────────────────────────────────────
+# ── Sub-questions ──────────────────────────────────────────────────────────────
+
+
+class SubQuestion(BaseModel):
+    """
+    One part of a multi-part question.
+
+    Stored as a List element inside the parent ElementalQuestion's content
+    paragraph — not as a separate DB entity.
+    """
+
+    content: Content = Field(description="The text of this sub-question part.")
+
+
+# ── Question ───────────────────────────────────────────────────────────────────
 
 
 class ExtractedQuestion(BaseModel):
-    """One atomic question extracted from the OCR output."""
+    """One atomic question (or multi-part question) extracted from the OCR output."""
 
     id: str = Field(
-        description="Short question identifier matching print numbering, e.g. '1', '2a', '3ii'."
+        description="Short question identifier matching print numbering, e.g. '1', '2', '3'."
     )
-    content: Content = Field(description="The question stem / body.")
+    content: Content = Field(
+        description=(
+            "The question stem / introductory text. "
+            "For multi-part questions this is the shared stimulus; "
+            "the individual parts go in sub_questions."
+        )
+    )
+    sub_questions: Optional[list[SubQuestion]] = Field(
+        default=None,
+        description=(
+            "Ordered sub-question parts (a), (b), (c) … "
+            "Present only when the question explicitly breaks into labelled parts. "
+            "Each part is stored as a list item in the content paragraph."
+        ),
+    )
     answer: Optional[Content] = Field(
         default=None,
         description="Printed answer, if present (e.g. answer key printed alongside).",
@@ -79,42 +115,12 @@ class ExtractedQuestion(BaseModel):
     )
 
 
-class ExtractedSeries(BaseModel):
-    """A block question: shared intro paragraph + list of numbered sub-questions."""
-
-    intro: Content = Field(description="The shared context / stimulus paragraph.")
-    questions: list[ExtractedQuestion] = Field(
-        description="Ordered sub-questions belonging to this series."
-    )
-
-
-# ── Top-level problem ─────────────────────────────────────────────────────────
-
-
-class ExtractedProblem(BaseModel):
-    """
-    One problem found on the page.  Exactly one of ``question``, ``series``,
-    or ``plain`` should be populated, matching ``kind``.
-    """
-
-    kind: Literal["question", "series", "plain"] = Field(
-        description=(
-            "'question' = standalone question; "
-            "'series' = group with intro + sub-questions; "
-            "'plain' = non-question text (heading, instruction, etc.)."
-        )
-    )
-    question: Optional[ExtractedQuestion] = None
-    series: Optional[ExtractedSeries] = None
-    plain: Optional[Content] = None
-
-
 # ── Page result ───────────────────────────────────────────────────────────────
 
 
 class ExtractedPage(BaseModel):
     """Full LLM output for one OCR-processed page or chunk."""
 
-    problems: list[ExtractedProblem] = Field(
-        description="All problems found on this page, in reading order."
+    problems: list[ExtractedQuestion] = Field(
+        description="All questions found on this page, in reading order."
     )

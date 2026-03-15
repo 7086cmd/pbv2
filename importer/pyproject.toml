@@ -24,6 +24,12 @@ dependencies = [
   "asyncio>=4.0.0",
   "python-dotenv>=1.2.2",
   "pypandoc>=1.16.2",
+  # Zenoh transport
+  "eclipse-zenoh>=1.0.0",
+  # Protobuf runtime (generated code from proto/pbv2.proto)
+  "protobuf>=5.0",
+  # Proto compilation (dev / CI only — run scripts/compile_proto.py)
+  "grpcio-tools>=1.62",
 ]
 
 [project.scripts]
