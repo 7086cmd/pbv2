@@ -10,7 +10,7 @@ pub use schema::problems::{ElementalQuestion, ProblemCategory, ProblemGroup, Que
 pub use schema::{
     elements::{
         BinaryImage, Blank, BlankAnswer, Cell, CodeListing, CompiledGraph, CompoundUnit, Element,
-        FontSize, Image, ImageFormat, List, OrderFormat, OrderType, Paragraph, ProgrammingLanguage,
+        FontSize, Image, ImageFormat, List, PdfSvgImage, OrderFormat, OrderType, Paragraph, ProgrammingLanguage,
         SIUnit, SiPrefix, SiUnitX, Table, Text, TextAttributes, TextFlags, TextFormat, UnitFactor,
     },
     renderer::{

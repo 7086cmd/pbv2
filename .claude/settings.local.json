@@ -1,5 +1,28 @@
 {
   "permissions": {
-    "allow": ["Bash(psql:*)", "Bash(python:*)", "Bash(cargo build:*)", "Bash(cd:*)"]
+    "allow": [
+      "Bash(psql:*)",
+      "Bash(python:*)",
+      "Bash(cargo build:*)",
+      "Bash(cd:*)",
+      "Bash(node_modules/.bin/tsc --version)",
+      "Bash(find node_modules/.pnpm -maxdepth 1 -name @tiptap*)",
+      "Bash(find node_modules/.pnpm -path *tiptap+vue-3* -name index.d.ts)",
+      "Bash(find node_modules/.pnpm -path *tiptap+starter-kit* -name index.d.ts)",
+      "Bash(find node_modules/.pnpm -path *tiptap+extension-image* -name index.d.ts)",
+      "Bash(find node_modules/.pnpm -path *tiptap+starter-kit* -name *.js)",
+      "Bash(grep -l \"Image\\\\|image\" /Users/ethangoh/Developer/pbv2/schema/src/db/*.rs)",
+      "Bash(cargo check:*)",
+      "Bash(vp check:*)",
+      "Bash(npx vue-tsc:*)",
+      "Bash(find node_modules/.pnpm -path *tiptap+extension-color* -name index.d.ts)",
+      "Bash(grep -r \"choice_pool\\\\|ChoicePool\" /Users/ethangoh/Developer/pbv2/importer/*.py)",
+      "Bash(pnpm build:*)",
+      "Bash(pnpm check:*)",
+      "Bash(pnpm type-check:*)",
+      "Bash(sed -i '' 's/pub use image::{BinaryImage, Image, ImageFormat};/pub use image::{BinaryImage, Image, ImageFormat, PdfSvgImage};/' /Users/ethangoh/Developer/pbv2/schema/src/schema/elements/mod.rs)",
+      "Bash(sed -i '' 's/BinaryImage, Blank, BlankAnswer, Cell, CodeListing, CompiledGraph, CompoundUnit, Element,/BinaryImage, Blank, BlankAnswer, Cell, CodeListing, CompiledGraph, CompoundUnit, Element,/' /Users/ethangoh/Developer/pbv2/schema/src/lib.rs)",
+      "Bash(sed -i '' 's/FontSize, Image, ImageFormat, List,/FontSize, Image, ImageFormat, List, PdfSvgImage,/' /Users/ethangoh/Developer/pbv2/schema/src/lib.rs)"
+    ]
   }
 }

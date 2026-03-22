@@ -3,17 +3,33 @@ import { ref } from "vue";
 import CategoriesView from "@/shared/components/CategoriesView.vue";
 import ProblemsListView from "@/shared/components/ProblemsListView.vue";
 import ProblemDetailView from "@/shared/components/ProblemDetailView.vue";
+import ProblemEditor from "@/shared/components/ProblemEditor.vue";
 
 const selectedCategoryId = ref<number | null>(null);
 const selectedProblemId = ref<number | null>(null);
+const editMode = ref(false);
 
 function selectCategory(id: number) {
   selectedCategoryId.value = id;
   selectedProblemId.value = null;
+  editMode.value = false;
 }
 
 function selectProblem(id: number) {
   selectedProblemId.value = id;
+  editMode.value = false;
+}
+
+function enterEditMode() {
+  editMode.value = true;
+}
+
+function onSaved() {
+  editMode.value = false;
+}
+
+function onCancelled() {
+  editMode.value = false;
 }
 </script>
 
@@ -69,14 +85,44 @@ function selectProblem(id: number) {
         </div>
       </aside>
 
-      <!-- Column 3: Problem detail (appears when problem selected) -->
+      <!-- Column 3: Problem detail / editor -->
       <main class="col col--detail" :class="{ visible: selectedProblemId !== null }">
         <div class="col-header" v-if="selectedProblemId !== null">
-          Problem #{{ selectedProblemId }}
-          <button class="col-close" @click="selectedProblemId = null" title="Close">✕</button>
+          <span>
+            Problem #{{ selectedProblemId }}
+            <span v-if="editMode" class="edit-badge">editing</span>
+          </span>
+          <div class="col-header-actions">
+            <button
+              v-if="!editMode"
+              class="col-action-btn"
+              title="Edit problem"
+              @click="enterEditMode"
+            >
+              ✏ Edit
+            </button>
+            <button
+              class="col-close"
+              @click="
+                selectedProblemId = null;
+                editMode = false;
+              "
+              title="Close"
+            >
+              ✕
+            </button>
+          </div>
         </div>
         <div class="col-body">
-          <ProblemDetailView v-if="selectedProblemId !== null" :problem-id="selectedProblemId" />
+          <template v-if="selectedProblemId !== null">
+            <ProblemEditor
+              v-if="editMode"
+              :problem-id="selectedProblemId"
+              @saved="onSaved"
+              @cancelled="onCancelled"
+            />
+            <ProblemDetailView v-else :problem-id="selectedProblemId" />
+          </template>
           <div v-else-if="selectedCategoryId !== null" class="empty-hint">
             <p>Select a problem from the list.</p>
           </div>
@@ -204,6 +250,47 @@ function selectProblem(id: number) {
   background: #f8f9fd;
   border-bottom: 1px solid #e8eaf0;
   flex-shrink: 0;
+}
+
+.col-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.edit-badge {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #2563eb;
+  background: #dbeafe;
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+
+.col-action-btn {
+  background: none;
+  border: 1px solid #c8ccda;
+  cursor: pointer;
+  color: #555;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: 4px;
+  transition:
+    color 0.1s,
+    background 0.1s,
+    border-color 0.1s;
+  line-height: 1.4;
+}
+
+.col-action-btn:hover {
+  color: #1a1a1a;
+  background: #e8eaf0;
+  border-color: #aaa;
 }
 
 .col-close {
