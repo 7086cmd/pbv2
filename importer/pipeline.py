@@ -60,6 +60,8 @@ def load_system_prompt() -> str:
     if prompt_path.exists():
         text = prompt_path.read_text(encoding="utf-8").strip()
         if text:
+            # Hint the user that the system prompt can be customised by editing prompt.txt
+            print(f"[pipeline] Loaded system prompt from {prompt_path} ({len(text)} chars).")
             return text
     return (
         "You are an expert educational content extractor. "
